@@ -1,6 +1,8 @@
+import random
 
 import pygame
 from button import Button
+from sheet import Sheet
 
 pygame.init()
 
@@ -34,6 +36,8 @@ button_bounds = pygame.Rect(0, dice_pos[0][1] - 64 - 16, 200, 64)
 button_bounds.center = (width // 2, button_bounds.center[1])
 button = Button(button_bounds, "Roll dice", font)
 
+sheet = Sheet(pygame.Rect(width - 32 - 304, 32 - 4, 300 + 8, height - 60 + 8), font)
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -45,12 +49,15 @@ while running:
                     [int(random.random() * 100) for _ in range(14)],
                     [int(random.random() * 100) for _ in range(14)],
                 )
+            sheet.clicked(mouse_pos)
 
     screen.fill("purple")
 
     button.draw(screen)
 
     [screen.blit(dice_faces[i], dice_pos[i]) for i in range(5)]
+
+    sheet.draw(screen)
 
     pygame.display.flip()
 
