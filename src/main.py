@@ -1,5 +1,6 @@
 
 import pygame
+from button import Button
 
 pygame.init()
 
@@ -11,6 +12,7 @@ clock = pygame.time.Clock()
 running = True
 dt = 0
 
+font = pygame.font.Font("assets/ldfcomicsans.ttf", 16)
 
 dice_size = (64, 64)
 dice_space = 16
@@ -28,12 +30,25 @@ dice_pos = [
     for i in range(5)
 ]
 
+button_bounds = pygame.Rect(0, dice_pos[0][1] - 64 - 16, 200, 64)
+button_bounds.center = (width // 2, button_bounds.center[1])
+button = Button(button_bounds, "Roll dice", font)
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            if button.clicked(mouse_pos):
+                sheet.update_score(
+                    [int(random.random() * 100) for _ in range(14)],
+                    [int(random.random() * 100) for _ in range(14)],
+                )
 
     screen.fill("purple")
+
+    button.draw(screen)
 
     [screen.blit(dice_faces[i], dice_pos[i]) for i in range(5)]
 
