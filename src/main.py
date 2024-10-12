@@ -138,6 +138,69 @@ dice_vectors = [(0, 0)] * 5
 dice_throw_pos = [(0.0, 0.0, 0.0)] * 5
 
 
+def point_in_convex_polygon(
+    point: tuple[float, float], poly_points: list[tuple[float, float]]
+):
+    n = len(poly_points)
+
+    sign = 0
+
+    # for each side of the polygon, AB, use cross product to determine whether the AP vector is
+    # on the same side of AB (i.e. left or right)
+    for i in range(n):
+        ax, ay = poly_points[i]
+        bx, by = poly_points[(i + 1) % n]
+        px, py = point
+
+        bx -= ax
+        by -= ay
+        px -= ax
+        py -= ay
+
+        cross = bx * py - by * px
+
+        if sign == 0:
+            sign = -1 if cross < 0 else 1
+
+        # if the cross product is 0, it means the point is on the edge, which we consider as
+        # "inside"
+        if cross < 0 and sign > 0 or cross > 0 and sign < 0:
+            return False
+
+    return True
+
+
+def get_rotated_dice(rotated_dice_rect, rotation):
+    rect = pygame.Rect(0, 0, dice_size, dice_size)
+    rect.center = rotated_dice_rect.center
+    pivot = pygame.math.Vector2(rotated_dice_rect.center)
+
+    poly = [
+        (pygame.math.Vector2(rect.topleft) - pivot).rotate(-rotation) + pivot,
+        (pygame.math.Vector2(rect.topright) - pivot).rotate(-rotation) + pivot,
+        (pygame.math.Vector2(rect.bottomright) - pivot).rotate(-rotation) + pivot,
+        (pygame.math.Vector2(rect.bottomleft) - pivot).rotate(-rotation) + pivot,
+    ]
+
+    return [(p.x, p.y) for p in poly]
+
+
+rotated_dies = [
+    get_rotated_dice(pygame.Rect(pos, dice.get_size()), rotation)
+    for pos, dice, (_, _, rotation) in zip(dice_pos, dies, dice_throw_pos)
+]
+
+
+def init_animation():
+    global animate, dice_pos, dice_throw_pos, dice_vectors
+
+    animate = not animate
+    dice_pos = deepcopy(dice_bottom_pos)
+    dice_throw_pos = get_random_dice_throw(throw_bounds, dice_size)
+    fx, fy = off_screen_pos
+    dice_vectors = [(fx - x, fy - y) for x, y in dice_bottom_pos]
+
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -150,12 +213,11 @@ while running:
                     [int(random.random() * 100) for _ in range(14)],
                 )
 
-                animate = not animate
+                init_animation()
 
-                dice_pos = deepcopy(dice_bottom_pos)
-                dice_throw_pos = get_random_dice_throw(throw_bounds, dice_size)
-                fx, fy = off_screen_pos
-                dice_vectors = [(fx - x, fy - y) for x, y in dice_bottom_pos]
+            for dice in rotated_dies:
+                if point_in_convex_polygon(mouse_pos, dice):
+                    print("clicked")
 
             sheet.clicked(mouse_pos)
 
@@ -202,6 +264,12 @@ while running:
                     pygame.transform.rotate(dice_faces[i], rotation)
                     for i, (_, _, rotation) in enumerate(dice_throw_pos)
                 ]
+                rotated_dies = [
+                    get_rotated_dice(pygame.Rect(pos, dice.get_size()), rotation)
+                    for pos, dice, (_, _, rotation) in zip(
+                        dice_pos, dies, dice_throw_pos
+                    )
+                ]
 
                 frame_count = 0
                 curr_keyframe = 0
@@ -214,10 +282,10 @@ while running:
 
     button.draw(screen)
 
+    sheet.draw(screen)
+
     for i in range(5):
         screen.blit(dies[i], dice_pos[i])
-
-    sheet.draw(screen)
 
     pygame.display.flip()
 
