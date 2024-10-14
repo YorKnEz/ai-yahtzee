@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ScoreCategory(Enum):
     ONES = 0
     TWOS = 1

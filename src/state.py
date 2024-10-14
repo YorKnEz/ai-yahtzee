@@ -1,5 +1,3 @@
-import enum
-
 from utils import roll_random_dice
 
 # each reroll transition is encoded into a number
@@ -13,6 +11,7 @@ REROLL_TRANSITIONS = {
     25: [0, 1, 2, 3], 26: [0, 1, 2, 4], 27: [0, 1, 3, 4],
     28: [0, 2, 3, 4], 29: [1, 2, 3, 4], 30: [0, 1, 2, 3, 4]
 }
+
 
 class GameState:
     def __init__(self) -> None:
@@ -31,14 +30,14 @@ class GameState:
         player_state = self.player_states[player_index]
         if player_state.rerolls == 0:
             return False
-        if transition >= 0 and transition < len(REROLL_TRANSITIONS):
+        if 0 <= transition < len(REROLL_TRANSITIONS):
             return True  # can reroll dice
         else:
             return False  # invalid transition number
         
-    # i'm not sure if states must/should be immutable
+    # I'm not sure if states must/should be immutable
     # or even if these functions belong here
-    # but even if the logic gets written here i'm sure it can be moved somewhere else
+    # but even if the logic gets written here I'm sure it can be moved somewhere else
     def apply_reroll(self, player_index, transition: int) -> "GameState":
         """
         Return a new GameState with the given reroll transition applied
@@ -92,4 +91,3 @@ class PlayerState:
         new_state = PlayerState.from_array(self.to_array())
         new_state.rerolls = self.MAX_ROLLS
         return new_state
-

@@ -12,7 +12,7 @@ size = width, height = 1280, 720
 screen = pygame.display.set_mode(size)
 
 screen_bounds = pygame.Rect(0, 0, width, height)
-# screen has two parts: game and score sheet
+# screen has two parts: game and scoresheet
 game_bounds = pygame.Rect(0, 0, int(0.75 * width), height)  # 75% of screen
 sheet_bounds = pygame.Rect(
     game_bounds.right, 0, int(0.25 * width), height
@@ -27,9 +27,9 @@ font = pygame.font.Font("assets/ldfcomicsans.ttf", 16)
 
 dies = Dies(game_bounds, fps)
 
-button_bounds = pygame.Rect(0, dies.dice_pos[0][1] - 64 - 16, 200, 64)
-button_bounds.center = (game_bounds.center[0], button_bounds.center[1])
-button = Button(button_bounds, "Roll dice", font)
+roll_dice_button_bounds = pygame.Rect(0, dies.dice_pos[0][1] - 64 - 16, 200, 64)
+roll_dice_button_bounds.center = (game_bounds.center[0], roll_dice_button_bounds.center[1])
+roll_dice_button = Button(roll_dice_button_bounds, "Roll dice", font)
 
 sheet = Sheet(
     pygame.Rect(
@@ -68,7 +68,7 @@ def point_in_convex_polygon(
 
         # if the cross product is 0, it means the point is on the edge, which we consider as
         # "inside"
-        if cross < 0 and sign > 0 or cross > 0 and sign < 0:
+        if cross < 0 < sign or sign < 0 < cross:
             return False
 
     return True
@@ -80,7 +80,7 @@ while running:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
-            if button.clicked(mouse_pos):
+            if roll_dice_button.clicked(mouse_pos):
                 sheet.update_score(
                     [int(random.random() * 100) for _ in range(14)],
                     [int(random.random() * 100) for _ in range(14)],
@@ -104,7 +104,7 @@ while running:
     pygame.draw.rect(screen, "blue", game_bounds)
     pygame.draw.rect(screen, "green", dies.throw_bounds)
 
-    button.draw(screen)
+    roll_dice_button.draw(screen)
 
     sheet.draw(screen)
 

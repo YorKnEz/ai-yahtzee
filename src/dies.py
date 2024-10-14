@@ -21,7 +21,7 @@ class Dies:
         self.dies = [self.dice_faces[i] for i in range(5)]
 
         dice_start_x = (
-            game_bounds.center[0] - (Dies.size * 5 + Dies.space_between_dice * 4) // 2
+                game_bounds.center[0] - (Dies.size * 5 + Dies.space_between_dice * 4) // 2
         )
 
         self.dice_pos = [
@@ -39,7 +39,7 @@ class Dies:
         # dice animation stuff
         self.animate = False
         # the keyframes of the animation (a tuple of form (duration in seconds, duration in frames)):
-        # - first item: off screen animation
+        # - first item: off-screen animation
         # - second item: "dice throw" animation
         self.keyframes = [(1, 1 * fps), (0.3, 0.3 * fps)]
         self.frame_count = 0
@@ -78,7 +78,7 @@ class Dies:
     # generate 5 throws in the space defined by throw_bounds such that the dies are not overlapping
     # the returned value is an array of tuples of form (x, y, rotation)
     def get_random_dice_throw(self):
-        dice_diag = math.ceil((Dies.size * (2**0.5)))
+        dice_diag = math.ceil((Dies.size * (2 ** 0.5)))
 
         # normalize throw_bounds such that if dices are rotated they wont be drawn outside of the
         # original throw bounds
@@ -99,7 +99,7 @@ class Dies:
                 for _ in range(5)
             ]
 
-        distance = lambda a, b: math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
+        def distance(a, b): return math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
         # pick 5 random spots in this space until they are non overlapping
         overlapping = True
@@ -121,7 +121,8 @@ class Dies:
             (x - dice_diag / 2, y - dice_diag / 2, rotation) for x, y, rotation in spots
         ]
 
-    def get_rotated_dice(self, rotated_dice_rect, rotation):
+    @staticmethod
+    def get_rotated_dice(rotated_dice_rect, rotation):
         rect = pygame.Rect(0, 0, Dies.size, Dies.size)
         rect.center = rotated_dice_rect.center
         pivot = pygame.math.Vector2(rotated_dice_rect.center)
@@ -188,7 +189,7 @@ class Dies:
                 ]
 
                 # get the bounds of the rotated dice as a set of points of a polygon
-                # this is used in determining if a dice is clicked
+                # this is used in determining if a die is clicked
                 self.rotated_dies = [
                     self.get_rotated_dice(pygame.Rect(pos, dice.get_size()), rotation)
                     for pos, dice, (_, _, rotation) in zip(

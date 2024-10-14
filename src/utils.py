@@ -4,11 +4,13 @@ from collections import Counter
 
 from constants import ScoreCategory
 
+
 def roll_random_dice(dice_no: int):
     """
     Return an array with `dice_no` random values from 1 to 6.
     """
     return [random.randint(1, 6) for _ in range(dice_no)]
+
 
 def reroll(dice_roll: list[int], to_roll: list[int]):
     """
@@ -20,6 +22,7 @@ def reroll(dice_roll: list[int], to_roll: list[int]):
     for ith_random, to_reroll in enumerate(to_roll):
         new_dice[to_reroll] = random_throws[ith_random]
     return new_dice
+
 
 def score_roll(dice_roll: list[int]):
     """
@@ -70,7 +73,6 @@ def score_roll(dice_roll: list[int]):
         scores[ScoreCategory.YAHTZEE.value] = 0
 
     return scores
-
 
 # if __name__ == "__main__":
 #     print(score_roll([0, 1, 2, 3, 4]))
