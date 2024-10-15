@@ -3,8 +3,11 @@ import random
 import pygame
 
 from button import Button
+from constants import FPS
+from die import Die
 from dies import Dies
 from sheet import Sheet
+from utils import point_in_convex_polygon
 
 pygame.init()
 
@@ -19,13 +22,12 @@ sheet_bounds = pygame.Rect(
 )  # 25% of screen
 
 clock = pygame.time.Clock()
-fps = 144
 running = True
 dt = 0
 
 font = pygame.font.Font("assets/ldfcomicsans.ttf", 16)
 
-dies = Dies(game_bounds, fps)
+dies = Dies(game_bounds)
 
 roll_dice_button_bounds = pygame.Rect(0, dies.dice_pos[0][1] - 64 - 16, 200, 64)
 roll_dice_button_bounds.center = (game_bounds.center[0], roll_dice_button_bounds.center[1])
@@ -42,36 +44,7 @@ sheet = Sheet(
 )
 
 
-def point_in_convex_polygon(
-    point: tuple[float, float], poly_points: list[tuple[float, float]]
-):
-    n = len(poly_points)
-
-    sign = 0
-
-    # for each side of the polygon, AB, use cross product to determine whether the AP vector is
-    # on the same side of AB (i.e. left or right)
-    for i in range(n):
-        ax, ay = poly_points[i]
-        bx, by = poly_points[(i + 1) % n]
-        px, py = point
-
-        bx -= ax
-        by -= ay
-        px -= ax
-        py -= ay
-
-        cross = bx * py - by * px
-
-        if sign == 0:
-            sign = -1 if cross < 0 else 1
-
-        # if the cross product is 0, it means the point is on the edge, which we consider as
-        # "inside"
-        if cross < 0 < sign or sign < 0 < cross:
-            return False
-
-    return True
+__die = Die(dies.dice_faces[0], 1, (100, 100))
 
 
 while running:
@@ -90,14 +63,23 @@ while running:
                 print(throw)
                 dies.throw(throw)
 
+                x, y, rot = dies.dice_throw_pos[0]
+                __throw = (x + (64 * (2**0.5)) / 2, y + (64 * (2**0.5)) / 2, rot)
+
+                __die.throw(throw[0], dies.off_screen_pos, __throw, dies.throw_bounds)
+
             for dice in dies.rotated_dies:
                 if point_in_convex_polygon(mouse_pos, dice):
                     print("clicked")
+
+            __die.click(mouse_pos)
 
             sheet.clicked(mouse_pos)
 
     if dies.animate:
         dies.throw_animation_frame(dt)
+
+    __die.update(dt)
 
     screen.fill("purple")
 
@@ -110,8 +92,10 @@ while running:
 
     dies.draw(screen)
 
+    __die.draw(screen)
+
     pygame.display.flip()
 
-    dt = clock.tick(fps) / 1000
+    dt = clock.tick(FPS) / 1000
 
 pygame.quit()

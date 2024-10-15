@@ -1,5 +1,4 @@
 import random
-
 from collections import Counter
 
 from constants import ScoreCategory
@@ -73,6 +72,43 @@ def score_roll(dice_roll: list[int]):
         scores[ScoreCategory.YAHTZEE.value] = 0
 
     return scores
+
+
+def point_in_convex_polygon(
+    point: tuple[float, float], poly_points: list[tuple[float, float]]
+):
+    """
+    Given a point and a convex polygon as a list of vertices, returns if the point is within the 
+    polygon.
+    """
+    n = len(poly_points)
+
+    sign = 0
+
+    # for each side of the polygon, AB, use cross product to determine whether the AP vector is
+    # on the same side of AB (i.e. left or right)
+    for i in range(n):
+        ax, ay = poly_points[i]
+        bx, by = poly_points[(i + 1) % n]
+        px, py = point
+
+        bx -= ax
+        by -= ay
+        px -= ax
+        py -= ay
+
+        cross = bx * py - by * px
+
+        if sign == 0:
+            sign = -1 if cross < 0 else 1
+
+        # if the cross product is 0, it means the point is on the edge, which we consider as
+        # "inside"
+        if cross < 0 and sign > 0 or cross > 0 and sign < 0:
+            return False
+
+    return True
+
 
 # if __name__ == "__main__":
 #     print(score_roll([0, 1, 2, 3, 4]))
