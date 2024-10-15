@@ -5,6 +5,7 @@ from utils import point_in_convex_polygon
 
 
 class Die:
+
     def __init__(
         self,
         image: pygame.Surface,
@@ -26,7 +27,7 @@ class Die:
         self.bounds = pygame.Rect(*pos, size, size)
         self.rotation = 0.0
 
-        self.start_pos = self.bounds.topleft
+        self.start_pos = self.bounds.center
         self.throw_pos = (0.0, 0.0, 0.0)
         self.poly_bounds = self.get_updated_poly_bounds()
 
@@ -77,6 +78,7 @@ class Die:
 
 
 class DieState:
+
     def throw(self, new_value: int, off_screen_pos, throw_pos, throw_bounds):
         pass
 
@@ -91,17 +93,19 @@ class DieState:
 
 
 class IdleDie(DieState):
+
     def __init__(self, parent: Die):
         self.parent = parent
 
     def throw(self, new_value: int, off_screen_pos, throw_pos, throw_bounds):
-        self.value = new_value
+        self.parent.value = new_value
         self.parent.state = ThrownDieAnimation(
             self.parent, off_screen_pos, throw_pos, throw_bounds
         )
 
 
 class ThrownDieAnimation(DieState):
+
     def __init__(
         self, parent: Die, off_screen_pos, throw_pos, throw_bounds: pygame.Rect
     ):
@@ -175,11 +179,12 @@ class ThrownDieAnimation(DieState):
 
 
 class PickableDie(DieState):
+
     def __init__(self, parent: Die):
         self.parent = parent
 
     def throw(self, new_value: int, off_screen_pos, throw_pos, throw_bounds):
-        self.value = new_value
+        self.parent.value = new_value
         self.parent.state = ThrownDieAnimation(
             self.parent, off_screen_pos, throw_pos, throw_bounds
         )
@@ -196,6 +201,7 @@ class PickableDie(DieState):
 
 
 class MovingDieAnimation(DieState):
+
     def __init__(self, parent: Die, pick=True):
         self.parent = parent
 
@@ -212,7 +218,7 @@ class MovingDieAnimation(DieState):
             self.rotation = rot
 
         # the keyframes of the animation (a tuple of form (duration in seconds, duration in frames)):
-        # - first item: off screen animation
+        # - first item: off-screen animation
         # - second item: "die throw" animation
         self.keyframes = [(0.5, 0.5 * FPS)]
         self.frame_count = 0
@@ -245,7 +251,7 @@ class MovingDieAnimation(DieState):
             self.parent.update_image(self.rotation)
 
             # get the bounds of the rotated dice as a set of points of a polygon
-            # this is used in determining if a dice is clicked
+            # this is used in determining if a die is clicked
             self.parent.poly_bounds = self.parent.get_updated_poly_bounds()
 
             # reset frame_count and curr_keyframe and stop the animation
@@ -256,6 +262,7 @@ class MovingDieAnimation(DieState):
 
 
 class PickedDie(DieState):
+
     def __init__(self, parent: Die):
         self.parent = parent
 

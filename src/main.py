@@ -4,10 +4,8 @@ import pygame
 
 from button import Button
 from constants import FPS
-from die import Die
-from dies import Dies
+from dice import Dice
 from sheet import Sheet
-from utils import point_in_convex_polygon
 
 pygame.init()
 
@@ -27,9 +25,9 @@ dt = 0
 
 font = pygame.font.Font("assets/ldfcomicsans.ttf", 16)
 
-dies = Dies(game_bounds)
+dice = Dice(game_bounds)
 
-roll_dice_button_bounds = pygame.Rect(0, dies.dice_pos[0][1] - 64 - 16, 200, 64)
+roll_dice_button_bounds = pygame.Rect(0, dice.dice[1].bounds.top - 64 - 16, 200, 64)
 roll_dice_button_bounds.center = (game_bounds.center[0], roll_dice_button_bounds.center[1])
 roll_dice_button = Button(roll_dice_button_bounds, "Roll dice", font)
 
@@ -43,10 +41,6 @@ sheet = Sheet(
     font,
 )
 
-
-__die = Die(dies.dice_faces[0], 1, (100, 100))
-
-
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -59,40 +53,24 @@ while running:
                     [int(random.random() * 100) for _ in range(14)],
                 )
 
-                throw = [int(random.random() * 6) % 6 + 1 for _ in range(5)]
-                print(throw)
-                dies.throw(throw)
+                rolls = [int(random.random() * 6) % 6 + 1 for _ in range(5)]
+                dice.random_dice_throw(rolls)
 
-                x, y, rot = dies.dice_throw_pos[0]
-                __throw = (x + (64 * (2**0.5)) / 2, y + (64 * (2**0.5)) / 2, rot)
+            dice.click(mouse_pos)
+            if sheet.clicked(mouse_pos):
+                print(sheet.clicked(mouse_pos))
 
-                __die.throw(throw[0], dies.off_screen_pos, __throw, dies.throw_bounds)
-
-            for dice in dies.rotated_dies:
-                if point_in_convex_polygon(mouse_pos, dice):
-                    print("clicked")
-
-            __die.click(mouse_pos)
-
-            sheet.clicked(mouse_pos)
-
-    if dies.animate:
-        dies.throw_animation_frame(dt)
-
-    __die.update(dt)
+    dice.update(dt)
 
     screen.fill("purple")
 
     pygame.draw.rect(screen, "blue", game_bounds)
-    pygame.draw.rect(screen, "green", dies.throw_bounds)
+    pygame.draw.rect(screen, "green", dice.play_area_bounds)
 
     roll_dice_button.draw(screen)
 
     sheet.draw(screen)
-
-    dies.draw(screen)
-
-    __die.draw(screen)
+    dice.draw(screen)
 
     pygame.display.flip()
 

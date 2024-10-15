@@ -1,3 +1,4 @@
+import math
 import random
 from collections import Counter
 
@@ -108,6 +109,10 @@ def point_in_convex_polygon(
             return False
 
     return True
+
+
+def distance(a: (float, float), b: (float, float)):
+    return math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
 
 # if __name__ == "__main__":
