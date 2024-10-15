@@ -16,3 +16,6 @@ class ScoreCategory(Enum):
     LARGE_STRAIGHT = 10
     CHANCE = 11
     YAHTZEE = 12
+
+
+UNSELECTED_CATEGORY_VALUE = -1
