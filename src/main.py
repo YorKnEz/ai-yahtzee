@@ -4,8 +4,10 @@ import pygame
 
 from button import Button
 from constants import FPS
+from die import Die
 from dies import Dies
 from sheet import Sheet
+from utils import point_in_convex_polygon
 
 pygame.init()
 
@@ -42,6 +44,7 @@ sheet = Sheet(
 )
 
 
+__die = Die(dies.dice_faces[0], 1, (100, 100))
 
 
 while running:
@@ -60,14 +63,23 @@ while running:
                 print(throw)
                 dies.throw(throw)
 
+                x, y, rot = dies.dice_throw_pos[0]
+                __throw = (x + (64 * (2**0.5)) / 2, y + (64 * (2**0.5)) / 2, rot)
+
+                __die.throw(throw[0], dies.off_screen_pos, __throw, dies.throw_bounds)
+
             for dice in dies.rotated_dies:
                 if point_in_convex_polygon(mouse_pos, dice):
                     print("clicked")
+
+            __die.click(mouse_pos)
 
             sheet.clicked(mouse_pos)
 
     if dies.animate:
         dies.throw_animation_frame(dt)
+
+    __die.update(dt)
 
     screen.fill("purple")
 
@@ -79,6 +91,8 @@ while running:
     sheet.draw(screen)
 
     dies.draw(screen)
+
+    __die.draw(screen)
 
     pygame.display.flip()
 
