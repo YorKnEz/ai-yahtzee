@@ -4,12 +4,14 @@ from copy import deepcopy
 
 import pygame
 
+from constants import FPS
+
 
 class Dies:
     size = 64
     space_between_dice = 16
 
-    def __init__(self, game_bounds, fps):
+    def __init__(self, game_bounds):
         self.dice_faces = [
             pygame.transform.scale(
                 pygame.image.load(f"assets/dice/dice{i}.png").convert_alpha(),
@@ -41,7 +43,7 @@ class Dies:
         # the keyframes of the animation (a tuple of form (duration in seconds, duration in frames)):
         # - first item: off screen animation
         # - second item: "dice throw" animation
-        self.keyframes = [(1, 1 * fps), (0.3, 0.3 * fps)]
+        self.keyframes = [(1, 1 * FPS), (0.3, 0.3 * FPS)]
         self.frame_count = 0
         self.curr_keyframe = 0
         self.dice_vectors = [(0, 0)] * 5

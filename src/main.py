@@ -3,6 +3,7 @@ import random
 import pygame
 
 from button import Button
+from constants import FPS
 from dies import Dies
 from sheet import Sheet
 
@@ -19,13 +20,12 @@ sheet_bounds = pygame.Rect(
 )  # 25% of screen
 
 clock = pygame.time.Clock()
-fps = 144
 running = True
 dt = 0
 
 font = pygame.font.Font("assets/ldfcomicsans.ttf", 16)
 
-dies = Dies(game_bounds, fps)
+dies = Dies(game_bounds)
 
 button_bounds = pygame.Rect(0, dies.dice_pos[0][1] - 64 - 16, 200, 64)
 button_bounds.center = (game_bounds.center[0], button_bounds.center[1])
@@ -82,6 +82,6 @@ while running:
 
     pygame.display.flip()
 
-    dt = clock.tick(fps) / 1000
+    dt = clock.tick(FPS) / 1000
 
 pygame.quit()

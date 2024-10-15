@@ -1,5 +1,7 @@
 from enum import Enum
 
+FPS = 144
+
 class ScoreCategory(Enum):
     ONES = 0
     TWOS = 1
