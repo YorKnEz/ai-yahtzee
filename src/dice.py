@@ -3,7 +3,7 @@ import random
 
 import pygame
 
-from src.utils import distance
+from utils import distance
 
 from die import Die
 

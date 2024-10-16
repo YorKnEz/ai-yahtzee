@@ -24,6 +24,7 @@ class Die:
         # common attributes
         self.image = image
         self.value = value
+        self.size = size
         self.bounds = pygame.Rect(*pos, size, size)
         self.rotation = 0.0
 
@@ -33,7 +34,7 @@ class Die:
 
     def get_updated_poly_bounds(self):
         """Returns an array of vertices representing the corners of the die."""
-        rect = pygame.Rect(0, 0, self.bounds.width, self.bounds.width)
+        rect = pygame.Rect(0, 0, self.size, self.size)
         rect.center = self.bounds.center
         pivot = pygame.math.Vector2(rect.center)
 
@@ -57,11 +58,14 @@ class Die:
         self.rotation = rotation
         self.image = pygame.transform.scale(
             pygame.image.load(f"assets/dice/dice{self.value}.png").convert_alpha(),
-            self.bounds.size,
+            (self.size, self.size),
         )
 
         if rotation != 0.0:
             self.image = pygame.transform.rotate(self.image, rotation)
+
+        self.bounds.width = self.image.get_width()
+        self.bounds.height = self.image.get_height()
 
     def draw(self, screen):
         screen.blit(self.image, self.bounds.topleft)
@@ -146,25 +150,25 @@ class ThrownDieAnimation(DieState):
 
             if self.curr_keyframe == 0:
                 # snap dice to their final position
-                self.parent.bounds.topleft = self.off_screen_pos
+                self.parent.bounds.center = self.off_screen_pos
 
                 # prepare direction vectors for the dice throw
                 self.vector = (
-                    throw_x - self.parent.bounds.x,
-                    throw_y - self.parent.bounds.y,
+                    throw_x - self.parent.bounds.center[0],
+                    throw_y - self.parent.bounds.center[1],
                 )
 
                 # reset frame_count and move to next keyframe
                 self.frame_count = 0
                 self.curr_keyframe += 1
             else:
-                # snap dice to their final position
-                self.parent.bounds.center = (throw_x, throw_y)
-
                 # update dice values
                 # rotate the dice for a more realistic throw animation
                 self.parent.update_image(rot)
                 self.parent.throw_pos = self.throw_pos
+                
+                # snap dice to their final position
+                self.parent.bounds.center = (throw_x, throw_y)
 
                 # get the bounds of the rotated dice as a set of points of a polygon
                 # this is used in determining if a dice is clicked
@@ -190,11 +194,11 @@ class PickableDie(DieState):
         )
 
     def click(self):
-        # move die to it's start position
+        # move die to its start position
         self.parent.state = MovingDieAnimation(self.parent)
 
     def reset(self):
-        # move die to it's start position
+        # move die to its start position
         self.parent.state = MovingDieAnimation(self.parent)
         # move die to idle state then
         self.parent.state.reset()
@@ -243,12 +247,12 @@ class MovingDieAnimation(DieState):
 
             self.frame_count += 1
         else:  # if current keyframe ended, do different things depending on current keyframe
-            # snap dice to their final position
-            self.parent.bounds.center = self.final_pos
-
             # update dice values
             # rotate the dice for a more realistic throw animation
             self.parent.update_image(self.rotation)
+
+            # snap dice to their final position
+            self.parent.bounds.center = self.final_pos
 
             # get the bounds of the rotated dice as a set of points of a polygon
             # this is used in determining if a die is clicked
