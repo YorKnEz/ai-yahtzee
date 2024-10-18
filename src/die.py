@@ -95,6 +95,9 @@ class DieState:
     def reset(self):
         pass
 
+    def picked(self) -> bool:
+        return False
+
 
 class IdleDie(DieState):
 
@@ -116,7 +119,7 @@ class ThrownDieAnimation(DieState):
         self.parent = parent
 
         # the keyframes of the animation (a tuple of form (duration in seconds, duration in frames)):
-        # - first item: off screen animation
+        # - first item: off-screen animation
         # - second item: "die throw" animation
         self.keyframes = [(0.5, 0.5 * FPS), (0.3, 0.3 * FPS)]
         self.frame_count = 0
@@ -171,7 +174,7 @@ class ThrownDieAnimation(DieState):
                 self.parent.bounds.center = (throw_x, throw_y)
 
                 # get the bounds of the rotated dice as a set of points of a polygon
-                # this is used in determining if a dice is clicked
+                # this is used in determining if a die is clicked
                 self.parent.poly_bounds = self.parent.get_updated_poly_bounds()
 
                 # reset frame_count and curr_keyframe and stop the animation
@@ -276,3 +279,6 @@ class PickedDie(DieState):
 
     def reset(self):
         self.parent.state = self.parent.idle_state
+
+    def picked(self) -> bool:
+        return True

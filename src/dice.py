@@ -13,7 +13,7 @@ class Dice:
     dice_gap = 16
     die_diag = die_size * (2 ** 0.5)
 
-    def __init__(self, game_bounds: pygame.Rect):
+    def __init__(self, game_bounds: pygame.Rect, dice_values: list[int] = None):
         self.faces = [
             pygame.transform.scale(
                 pygame.image.load(f"assets/dice/dice{i}.png").convert_alpha(),
@@ -41,14 +41,24 @@ class Dice:
             for x, _ in self.dice_bottom_pos
         ]
 
-        self.dice = [
-            Die(
-                self.faces[i],
-                i + 1,
-                self.dice_bottom_pos[i],
-            )
-            for i in range(5)
-        ]
+        if not dice_values:
+            self.dice = [
+                Die(
+                    self.faces[i],
+                    i + 1,
+                    self.dice_bottom_pos[i],
+                )
+                for i in range(5)
+            ]
+        else:
+            self.dice = [
+                Die(
+                    self.faces[value - 1],
+                    value,
+                    self.dice_bottom_pos[i],
+                )
+                for i, value in enumerate(dice_values)
+            ]
 
         self.off_screen_pos = (self.dice[2].bounds.center[0], game_bounds.bottom + Dice.die_size + 256)
         self.play_area_bounds = pygame.Rect(
@@ -98,9 +108,10 @@ class Dice:
         for die in self.dice:
             die.draw(screen)
 
-    def random_dice_throw(self, dice_values: list[int]):
+    def throw(self, dice_values: list[int]):
         spots = self.__get_random_dice_throw()
         for value, die, spot in zip(dice_values, self.dice, spots):
             die.throw(value, self.off_screen_pos, spot, self.throw_bounds)
 
-        print([die.value for die in self.dice])
+    def unpicked_indexes(self) -> list[int]:
+        return [i for i, die in enumerate(self.dice) if not die.state.picked()]

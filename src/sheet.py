@@ -1,4 +1,10 @@
+from itertools import zip_longest
+
 import pygame
+
+from constants import UNSELECTED_CATEGORY_VALUE
+from utils import score_roll
+from state import GameState
 
 
 class Sheet:
@@ -111,29 +117,51 @@ class Sheet:
         self.score_text = []
         self.score_text_rect = []
 
-    def update_score(self, player1, player2):
+    def __score_for_player(self, column_index: int, player_scores: list[int], obtained_scores: list[int] = None):
+
+        if obtained_scores is None:
+            obtained_scores = []
+
+        is_0_only_obtainable_score = all(
+            player_score == UNSELECTED_CATEGORY_VALUE and obtained_score == 0
+            for obtained_score, player_score in (zip_longest(obtained_scores, player_scores))
+        )
+
+        for i, (existing_score, possible_score) in enumerate(zip_longest(player_scores, obtained_scores, fillvalue=0)):
+
+            color = "black"
+            display_number = existing_score
+            if display_number == UNSELECTED_CATEGORY_VALUE:
+                display_number = possible_score
+                color = "red"
+
+                if not is_0_only_obtainable_score and display_number == 0:
+                    display_number = None
+
+            self.score_text.append(
+                self.font.render(
+                    str(display_number) if display_number else "",
+                    True,
+                    color
+                )
+            )
+            rect = self.score_text[i].get_rect()
+            rect.x = self.cells_bounds.x + self.cell_width * column_index + 8
+            rect.center = (
+                rect.center[0],
+                self.cells_bounds.y + i * self.cell_height + self.cell_height // 2,
+            )
+            self.score_text_rect.append(rect)
+
+    def update_score(self, state: GameState):
         self.score_text.clear()
         self.score_text_rect.clear()
 
-        for i, score in enumerate(player1):
-            self.score_text.append(self.font.render(str(score) if score > 0 else "", True, "red"))
-            rect = self.score_text[i].get_rect()
-            rect.x = self.cells_bounds.x + 8
-            rect.center = (
-                rect.center[0],
-                self.cells_bounds.y + i * self.cell_height + self.cell_height // 2,
+        obtained_scores = score_roll(state.dice)
+        for player_index, player_state in enumerate(state.player_states):
+            self.__score_for_player(
+                player_index, player_state.scores, obtained_scores if player_index == state.current_player else None
             )
-            self.score_text_rect.append(rect)
-
-        for i, score in enumerate(player2):
-            self.score_text.append(self.font.render(str(score) if score > 0 else "", True, "red"))
-            rect = self.score_text[i].get_rect()
-            rect.x = self.cells_bounds.x + self.cell_width + 8
-            rect.center = (
-                rect.center[0],
-                self.cells_bounds.y + i * self.cell_height + self.cell_height // 2,
-            )
-            self.score_text_rect.append(rect)
 
     def draw(self, screen):
         pygame.draw.rect(screen, "white", self.bounds)
