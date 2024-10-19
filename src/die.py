@@ -80,6 +80,9 @@ class Die:
         if point_in_convex_polygon(pos, self.poly_bounds):
             self.state.click()
 
+    def picked(self):
+        return self.state.picked()
+
 
 class DieState:
 

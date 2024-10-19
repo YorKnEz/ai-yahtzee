@@ -113,4 +113,4 @@ class Dice:
             die.throw(value, self.off_screen_pos, spot, self.throw_bounds)
 
     def unpicked_indexes(self) -> list[int]:
-        return [i for i, die in enumerate(self.dice) if not die.state.picked()]
+        return [i for i, die in enumerate(self.dice) if not die.picked()]
