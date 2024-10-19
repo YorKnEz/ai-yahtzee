@@ -25,7 +25,8 @@ class Die:
         self.image = image
         self.value = value
         self.size = size
-        self.bounds = pygame.Rect(*pos, size, size)
+        self.bounds = pygame.Rect(0, 0, size, size)
+        self.bounds.center = (int(pos[0]), int(pos[1]))
         self.rotation = 0.0
 
         self.start_pos = self.bounds.center
@@ -80,6 +81,9 @@ class Die:
         if point_in_convex_polygon(pos, self.poly_bounds):
             self.state.click()
 
+    def reset(self, new_pos):
+        self.state.reset(new_pos)
+
     def picked(self):
         return self.state.picked()
 
@@ -95,7 +99,7 @@ class DieState:
     def click(self):
         pass
 
-    def reset(self):
+    def reset(self, new_pos):
         pass
 
     def picked(self) -> bool:
@@ -201,31 +205,32 @@ class PickableDie(DieState):
 
     def click(self):
         # move die to its start position
-        self.parent.state = MovingDieAnimation(self.parent)
+        self.parent.state = MovingDieAnimation(
+            self.parent, self.parent.start_pos, 0.0, self.parent.picked_state
+        )
 
-    def reset(self):
+    def reset(self, new_pos):
+        self.parent.start_pos = new_pos
         # move die to its start position
-        self.parent.state = MovingDieAnimation(self.parent)
-        # move die to idle state then
-        self.parent.state.reset()
+        self.parent.state = MovingDieAnimation(
+            self.parent, self.parent.start_pos, 0.0, self.parent.idle_state
+        )
 
 
 class MovingDieAnimation(DieState):
 
-    def __init__(self, parent: Die, pick=True):
+    def __init__(
+        self,
+        parent: Die,
+        final_pos: tuple[int, int],
+        rotation: float,
+        final_state: DieState,
+    ):
         self.parent = parent
 
-        x, y, rot = self.parent.throw_pos
-
-        if pick:
-            self.final_pos = self.parent.start_pos
-            self.final_state = self.parent.picked_state
-            self.rotation = 0.0
-        else:
-
-            self.final_pos = (int(x), int(y))
-            self.final_state = self.parent.pickable_state
-            self.rotation = rot
+        self.final_pos = final_pos
+        self.rotation = rotation
+        self.final_state = final_state
 
         # the keyframes of the animation (a tuple of form (duration in seconds, duration in frames)):
         # - first item: off-screen animation
@@ -278,10 +283,17 @@ class PickedDie(DieState):
 
     def click(self):
         # move to pickable state again
-        self.parent.state = MovingDieAnimation(self.parent, pick=False)
+        x, y, rot = self.parent.throw_pos
+        self.parent.state = MovingDieAnimation(
+            self.parent, (int(x), int(y)), rot, self.parent.pickable_state
+        )
 
-    def reset(self):
-        self.parent.state = self.parent.idle_state
+    def reset(self, new_pos):
+        self.parent.start_pos = new_pos
+        # move die to its start position
+        self.parent.state = MovingDieAnimation(
+            self.parent, self.parent.start_pos, 0.0, self.parent.idle_state
+        )
 
     def picked(self) -> bool:
         return True
