@@ -45,7 +45,9 @@ class GameState:
     REROLLS_PER_ROUND = 3
 
     def __init__(self, player_count: int = 2) -> None:
-        self.player_states: list[PlayerState] = [PlayerState()] * player_count
+        self.player_states: list[PlayerState] = [
+            PlayerState() for _ in range(player_count)
+        ]
         self.current_player = 0
         self.dice = [1, 2, 3, 4, 5]
         self.rerolls = GameState.REROLLS_PER_ROUND
