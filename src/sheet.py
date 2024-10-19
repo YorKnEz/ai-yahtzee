@@ -117,11 +117,12 @@ class Sheet:
         self.score_text = []
         self.score_text_rect = []
 
-    def __score_for_player(self, column_index: int, player_scores: list[int], obtained_scores: list[int] = None):
-
-        if obtained_scores is None:
-            obtained_scores = []
-
+    def __score_for_player(
+        self,
+        column_index: int,
+        player_scores: list[int],
+        obtained_scores: list[int],
+    ):
         is_0_only_obtainable_score = all(
             player_score == UNSELECTED_CATEGORY_VALUE and obtained_score == 0
             for obtained_score, player_score in (
@@ -155,14 +156,23 @@ class Sheet:
             )
             self.score_text_rect.append(rect)
 
-    def update_score(self, state: GameState):
+    def update_score(self, state: GameState, after_roll=False):
+        """
+        Updates the score sheet upon a state change. Updates can come from two places:
+        1. A reroll happend, which means `obtained_scores` must be retrieved and rendered on the
+        sheet.
+        2. A category selection happened, which means no obtained scores should be rendered and
+        the picked cell should be drawn usign black text.
+        """
         self.score_text.clear()
         self.score_text_rect.clear()
 
-        obtained_scores = score_roll(state.dice)
+        obtained_scores = score_roll(state.dice) if after_roll else []
         for player_index, player_state in enumerate(state.player_states):
             self.__score_for_player(
-                player_index, player_state.scores, obtained_scores if player_index == state.current_player else None
+                player_index,
+                player_state.scores,
+                obtained_scores if player_index == state.current_player else [],
             )
 
     def draw(self, screen):
