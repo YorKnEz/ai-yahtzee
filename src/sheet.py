@@ -124,10 +124,10 @@ class Sheet:
         obtained_scores: list[int],
     ):
         is_0_only_obtainable_score = all(
-            player_score == UNSELECTED_CATEGORY_VALUE and obtained_score == 0
-            for obtained_score, player_score in (
-                zip_longest(obtained_scores, player_scores)
-            )
+            obtained_score == 0
+            for obtained_score, player_score in
+            zip_longest(obtained_scores, player_scores)
+            if player_score == UNSELECTED_CATEGORY_VALUE
         )
 
         for i, (existing_score, possible_score) in enumerate(
@@ -145,7 +145,7 @@ class Sheet:
 
             self.score_text.append(
                 self.font.render(
-                    str(display_number) if display_number else "", True, color
+                    str(display_number) if display_number is not None else "", True, color
                 )
             )
             rect = self.score_text[i].get_rect()
@@ -158,11 +158,11 @@ class Sheet:
 
     def update_score(self, state: GameState, after_roll=False):
         """
-        Updates the score sheet upon a state change. Updates can come from two places:
-        1. A reroll happend, which means `obtained_scores` must be retrieved and rendered on the
+        Updates the scoresheet upon a state change. Updates can come from two places:
+        1. A reroll happened, which means `obtained_scores` must be retrieved and rendered on the
         sheet.
         2. A category selection happened, which means no obtained scores should be rendered and
-        the picked cell should be drawn usign black text.
+        the picked cell should be drawn using black text.
         """
         self.score_text.clear()
         self.score_text_rect.clear()
