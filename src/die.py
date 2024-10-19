@@ -81,11 +81,17 @@ class Die:
         if point_in_convex_polygon(pos, self.poly_bounds):
             self.state.click()
 
+    def pick(self):
+        self.state.click()
+
     def reset(self, new_pos):
         self.state.reset(new_pos)
 
-    def picked(self):
+    def picked(self) -> bool:
         return self.state.picked()
+
+    def in_animation(self) -> bool:
+        return self.state.in_animation()
 
 
 class DieState:
@@ -103,6 +109,9 @@ class DieState:
         pass
 
     def picked(self) -> bool:
+        return False
+
+    def in_animation(self) -> bool:
         return False
 
 
@@ -191,6 +200,9 @@ class ThrownDieAnimation(DieState):
                 # move to pickable state
                 self.parent.state = self.parent.pickable_state
 
+    def in_animation(self) -> bool:
+        return True
+
 
 class PickableDie(DieState):
 
@@ -274,6 +286,9 @@ class MovingDieAnimation(DieState):
 
             # move to picked state
             self.parent.state = self.final_state
+
+    def in_animation(self) -> bool:
+        return True
 
 
 class PickedDie(DieState):

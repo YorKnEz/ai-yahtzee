@@ -119,3 +119,10 @@ class Dice:
 
     def unpicked_indexes(self) -> list[int]:
         return [i for i, die in enumerate(self.dice) if not die.picked()]
+
+    def in_animation(self) -> bool:
+        return any(die.in_animation() for die in self.dice)
+
+    def pick(self, indexes: list[int]):
+        for index in indexes:
+            self.dice[index].pick()
