@@ -54,13 +54,28 @@ while running:
             mouse_pos = pygame.mouse.get_pos()
 
             if roll_dice_button.clicked(mouse_pos):
-                state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
-                dice.throw(state.dice)
-                sheet.update_score(state)
+                try:
+                    state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
+                    dice.throw(state.dice)
+                    sheet.update_score(state, after_roll=True)
+                except ValueError as _:
+                    pass
 
             dice.click(mouse_pos)
-            if sheet.clicked(mouse_pos):
-                print(sheet.clicked(mouse_pos))
+
+            sheet_cell = sheet.clicked(mouse_pos)
+            if sheet_cell:
+                category, player = sheet_cell
+
+                try:
+                    state = state.apply_category(category, player)
+
+                    dice.reset()
+                    sheet.update_score(state)
+
+                    # do AI move
+                except ValueError as _:
+                    pass
 
     dice.update(dt)
 
