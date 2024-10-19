@@ -1,11 +1,10 @@
-from copy import deepcopy
 import random
+from copy import deepcopy
 
 import pygame
 
-from utils import distance
-
 from die import Die
+from utils import distance
 
 
 class Dice:

@@ -69,7 +69,7 @@ def point_in_convex_polygon(
     point: tuple[float, float], poly_points: list[tuple[float, float]]
 ):
     """
-    Given a point and a convex polygon as a list of vertices, returns if the point is within the 
+    Given a point and a convex polygon as a list of vertices, returns if the point is within the
     polygon.
     """
     n = len(poly_points)

@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from constants import ScoreCategory, UNSELECTED_CATEGORY_VALUE
+from constants import UNSELECTED_CATEGORY_VALUE, ScoreCategory
 from utils import reroll, score_roll
 
 # each reroll transition is encoded into a number
@@ -138,6 +138,7 @@ class PlayerState:
     """
     Class representing the state of a player.
     """
+
     CATEGORY_COUNT = 13
 
     def __init__(self) -> None:

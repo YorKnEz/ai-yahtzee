@@ -28,7 +28,10 @@ state = GameState()
 dice = Dice(game_bounds, state.dice)
 
 roll_dice_button_bounds = pygame.Rect(0, dice.dice[1].bounds.top - 64 - 16, 200, 64)
-roll_dice_button_bounds.center = (game_bounds.center[0], roll_dice_button_bounds.center[1])
+roll_dice_button_bounds.center = (
+    game_bounds.center[0],
+    roll_dice_button_bounds.center[1],
+)
 roll_dice_button = Button(roll_dice_button_bounds, "Roll dice", font)
 
 sheet = Sheet(
@@ -49,6 +52,7 @@ while running:
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
+
             if roll_dice_button.clicked(mouse_pos):
                 state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
                 dice.throw(state.dice)

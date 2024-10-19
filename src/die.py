@@ -169,7 +169,7 @@ class ThrownDieAnimation(DieState):
                 # rotate the dice for a more realistic throw animation
                 self.parent.update_image(rot)
                 self.parent.throw_pos = self.throw_pos
-                
+
                 # snap dice to their final position
                 self.parent.bounds.center = (throw_x, throw_y)
 
