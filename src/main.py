@@ -141,7 +141,6 @@ while running:
                 ai_wait_time = 0
                 ai_state_no = 4
             case 2:  # select category
-                print("HERE")
                 state = ai.pick_category(state)
                 dice.reset()
                 sheet.update_score(state)
@@ -158,7 +157,7 @@ while running:
     if not state.is_final():
         render()
     else:
-        render((sum(state.player_states[0].scores), sum(state.player_states[1].scores)))
+        render((state.player_states[0].total_score(), state.player_states[1].total_score()))
 
     dt = clock.tick(FPS) / 1000
 
