@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import pygame
 
 from ai import RandomAI
@@ -39,6 +41,10 @@ roll_dice_button_bounds.center = (
 )
 roll_dice_button = Button(roll_dice_button_bounds, "Roll dice", font)
 
+replay_button_bounds = pygame.Rect((width - 300) // 2 + 50, (height - 200) // 2 + 120, 200, 50)
+replay_button_bounds.center = game_bounds.center[0], replay_button_bounds.center[1]
+replay_button = Button(replay_button_bounds, "Replay", font)
+
 sheet = Sheet(
     pygame.Rect(
         sheet_bounds.x,
@@ -50,7 +56,7 @@ sheet = Sheet(
 )
 
 
-def render():
+def render(final_scores: Tuple[int, int] = None):
     dice.update(dt)
     screen.fill("purple")
 
@@ -62,6 +68,20 @@ def render():
     sheet.draw(screen)
     dice.draw(screen)
 
+    if final_scores:
+        player_score, ai_score = final_scores
+        rect_width, rect_height = 300, 200
+        rect_x = game_bounds.center[0] - rect_width // 2
+        rect_y = (height - rect_height) // 2
+        pygame.draw.rect(screen, "pink", (rect_x, rect_y, rect_width, rect_height))
+        pygame.draw.rect(screen, "black", (rect_x, rect_y, rect_width, rect_height), 2)
+        player_score_text = font.render(f"Your score: {player_score}", True, "black")
+        ai_score_text = font.render(f"AI score: {ai_score}", True, "black")
+
+        screen.blit(player_score_text, (rect_x + rect_width // 2 - 50, rect_y + 20))
+        screen.blit(ai_score_text, (rect_x + rect_width // 2 - 50, rect_y + 60))
+        replay_button.draw(screen)
+
     pygame.display.flip()
 
 
@@ -70,10 +90,19 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if state.current_player != 0:
-                continue
 
             mouse_pos = pygame.mouse.get_pos()
+            if state.is_final():
+                if replay_button.clicked(mouse_pos):
+                    state = GameState()
+                    dice = Dice(game_bounds, state.dice)
+                    sheet.update_score(state)
+                    ai_state_no = 0
+                else:
+                    continue
+
+            if state.current_player != 0:
+                continue
 
             if roll_dice_button.clicked(mouse_pos) and not dice.in_animation():
                 try:
@@ -96,7 +125,7 @@ while running:
                 except ValueError as _:
                     pass
 
-    if state.current_player != 0 and not dice.in_animation():
+    if not state.is_final() and state.current_player != 0 and not dice.in_animation():
         match ai_state_no:
             case 0:  # picking dice
                 if ai.wants_reroll(state):
@@ -126,7 +155,11 @@ while running:
                 if ai_wait_time > 1.5:
                     ai_state_no = 0
 
-    render()
+    if not state.is_final():
+        render()
+    else:
+        render((sum(state.player_states[0].scores), sum(state.player_states[1].scores)))
+
     dt = clock.tick(FPS) / 1000
 
 pygame.quit()
