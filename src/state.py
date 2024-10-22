@@ -133,3 +133,6 @@ class PlayerState:
         Transform player state into array of integers.
         """
         return self.scores
+
+    def total_score(self):
+        return sum(self.scores) + 35 if sum(self.scores[:6]) > 63 else 0
