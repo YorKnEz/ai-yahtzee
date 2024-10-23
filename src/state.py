@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from constants import UNSELECTED_CATEGORY_VALUE, ScoreCategory
+from constants import CATEGORY_COUNT, STATIC_SCORES, ScoreCategory
 from utils import reroll, score_roll
 
 
@@ -10,9 +10,7 @@ class GameState:
     REROLLS_PER_ROUND = 3
 
     def __init__(self, player_count: int = 2) -> None:
-        self.player_states: list[PlayerState] = [
-            PlayerState() for _ in range(player_count)
-        ]
+        self.player_states: list[PlayerState] = [PlayerState() for _ in range(player_count)]
         self.current_player = 0
         self.dice = [1, 2, 3, 4, 5]
         self.rerolls = GameState.REROLLS_PER_ROUND
@@ -55,17 +53,21 @@ class GameState:
         if category not in category_ints:
             return False
 
+        if category in STATIC_SCORES:
+            return False
+
         player_state = self.player_states[player_index]
-        if player_state.scores[category] != UNSELECTED_CATEGORY_VALUE:
+        if player_state.scores[category] != ScoreCategory.UNSELECTED.value:
             return False
 
         predicted_scores = score_roll(self.dice)
 
         is_0_only_obtainable_score = all(
             obtained_score == 0
-            for obtained_score, player_score in
-            zip(predicted_scores, self.player_states[player_index].scores)
-            if player_score == UNSELECTED_CATEGORY_VALUE
+            for i, (obtained_score, player_score) in enumerate(
+                zip(predicted_scores, self.player_states[player_index].scores)
+            )
+            if player_score == ScoreCategory.UNSELECTED.value and i not in STATIC_SCORES
         )
 
         if not is_0_only_obtainable_score and predicted_scores[category] == 0:
@@ -88,14 +90,22 @@ class GameState:
         player_state = new_state.player_states[player_index]
 
         # multi-yahtzee
-        if (
-                all(self.dice[0] == die for die in self.dice)
-                and player_state.scores[ScoreCategory.YAHTZEE.value] > 0
-        ):
+        if all(self.dice[0] == die for die in self.dice) and player_state.scores[ScoreCategory.YAHTZEE.value] > 0:
             player_state.scores[ScoreCategory.YAHTZEE.value] += 100  # yahtzee bonus
 
         predicted_scores = score_roll(new_state.dice)
         player_state.scores[category] = predicted_scores[category]
+
+        # see if first six categories have been completed and update sum and bonus accordingly
+        first_six_completed = not any(
+            score == ScoreCategory.UNSELECTED.value for score in player_state.scores[: ScoreCategory.SUM.value]
+        )
+
+        if player_state.scores[ScoreCategory.SUM.value] == ScoreCategory.UNSELECTED.value and first_six_completed:
+            player_state.scores[ScoreCategory.SUM.value] = sum(player_state.scores[: ScoreCategory.SUM.value])
+            player_state.scores[ScoreCategory.BONUS.value] = (
+                35 if player_state.scores[ScoreCategory.SUM.value] >= 63 else 0
+            )
 
         new_state.__next_turn()
 
@@ -105,7 +115,9 @@ class GameState:
         """
         Return whether the current GameState is final.
         """
-        if any(any(score == UNSELECTED_CATEGORY_VALUE for score in player.scores) for player in self.player_states):
+        if any(
+            any(score == ScoreCategory.UNSELECTED.value for score in player.scores) for player in self.player_states
+        ):
             return False
 
         return True
@@ -116,14 +128,12 @@ class PlayerState:
     Class representing the state of a player.
     """
 
-    CATEGORY_COUNT = 13
-
     def __init__(self) -> None:
-        self.scores = [UNSELECTED_CATEGORY_VALUE] * PlayerState.CATEGORY_COUNT
+        self.scores = [ScoreCategory.UNSELECTED.value] * CATEGORY_COUNT
 
     @staticmethod
     def from_array(player_scores: list[int]) -> "PlayerState":
-        assert len(player_scores) == PlayerState.CATEGORY_COUNT
+        assert len(player_scores) == CATEGORY_COUNT
         new_state = PlayerState()
         new_state.scores = deepcopy(player_scores)
         return new_state
@@ -135,4 +145,4 @@ class PlayerState:
         return self.scores
 
     def total_score(self):
-        return sum(self.scores) + 35 if sum(self.scores[:6]) > 63 else 0
+        return sum(self.scores)

@@ -2,7 +2,7 @@ from itertools import zip_longest
 
 import pygame
 
-from constants import UNSELECTED_CATEGORY_VALUE
+from constants import STATIC_SCORES, ScoreCategory
 from state import GameState
 from utils import score_roll
 
@@ -15,6 +15,8 @@ class Sheet:
         "Fours",
         "Fives",
         "Sixes",
+        "Sum",
+        "Bonus",
         "Three of a kind",
         "Four of a kind",
         "Full house",
@@ -150,11 +152,11 @@ class Sheet:
         for i, (existing_score, possible_score) in enumerate(zip_longest(player_scores, obtained_scores, fillvalue=0)):
             color = "black"
             display_number = existing_score
-            if display_number == UNSELECTED_CATEGORY_VALUE:
+            if display_number == ScoreCategory.UNSELECTED.value:
                 display_number = possible_score
                 color = "red"
 
-                if not is_0_only_obtainable_score and display_number == 0:
+                if (not is_0_only_obtainable_score or i in STATIC_SCORES) and display_number == 0:
                     display_number = None
 
             self.score_text.append(
@@ -191,14 +193,14 @@ class Sheet:
         pygame.draw.rect(screen, "white", self.bounds)
 
         for i, (start_pos, end_pos) in enumerate(self.lines):
-            # make the exterior borders (i < 4), border after the first six rows (i == 10) and
-            # border before total score (i == 17) bold
+            # make the exterior borders (i < 4), border after the first six rows (i == 10),
+            # after sum and bonus (i == 12) and the border before total score (i == 19) bold
             pygame.draw.line(
                 screen,
                 "black",
                 start_pos,
                 end_pos,
-                2 if i < 4 or i == 10 or i == 17 else 1,
+                2 if i < 4 or i == 10 or i == 12 or i == 19 else 1,
             )
 
         for text, text_rect in zip(self.text, self.text_rect):

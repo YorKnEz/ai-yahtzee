@@ -2,7 +2,7 @@ import math
 import random
 from collections import Counter
 
-from constants import ScoreCategory
+from constants import CATEGORY_COUNT, ScoreCategory
 
 
 def roll_random_dice(dice_no: int):
@@ -29,7 +29,7 @@ def score_roll(dice_roll: list[int]):
     Return list of possible scores for each category of the game
     (excluding bonus) with the given dice roll.
     """
-    scores = [0] * 13
+    scores = [0] * CATEGORY_COUNT
 
     counts = Counter(dice_roll)
     dice_sum = sum(dice_roll)
@@ -65,9 +65,7 @@ def score_roll(dice_roll: list[int]):
     return scores
 
 
-def point_in_convex_polygon(
-    point: tuple[float, float], poly_points: list[tuple[float, float]]
-):
+def point_in_convex_polygon(point: tuple[float, float], poly_points: list[tuple[float, float]]):
     """
     Given a point and a convex polygon as a list of vertices, returns if the point is within the
     polygon.
