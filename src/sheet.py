@@ -24,6 +24,8 @@ class Sheet:
         "YAHTZEE",
         "Total score",
     ]
+    row_clickable = [True, True, True, True, True, True, False, False, True, True, True, True, True, True, True, False]
+
     col_labels = ["You", "AI"]
 
     def __init__(self, bounds: pygame.Rect, font: pygame.font.Font):
@@ -210,5 +212,6 @@ class Sheet:
         if self.cells_bounds.collidepoint(x, y):
             row = (y - self.cells_bounds.y) // self.cell_height
             col = (x - self.cells_bounds.x) // self.cell_width
-            return row, col
+            if Sheet.row_clickable[row]:
+                return row, col
         return None
