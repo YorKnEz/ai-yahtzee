@@ -21,6 +21,7 @@ class ScoreCategory(Enum):
     CHANCE = 13
     YAHTZEE = 14
 
+
 CATEGORY_COUNT = len(list(ScoreCategory)) - 1
 
 # static scores as in un-updatable by the user

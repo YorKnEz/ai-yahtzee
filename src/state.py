@@ -20,8 +20,8 @@ class GameState:
         self.rerolls = GameState.REROLLS_PER_ROUND
 
     def __is_valid_reroll_by_unpicked_dice(self, unpicked_dice: list[int]) -> bool:
-        # if self.rerolls == 0:
-        #     return False
+        if self.rerolls == 0:
+            return False
         if len(unpicked_dice) == 0:
             return False
         if not all(0 <= die_index < len(self.dice) for die_index in unpicked_dice):
@@ -145,4 +145,4 @@ class PlayerState:
         return self.scores
 
     def total_score(self):
-        return sum(self.scores)
+        return sum(self.scores[6:])

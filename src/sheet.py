@@ -2,7 +2,7 @@ from itertools import zip_longest
 
 import pygame
 
-from constants import STATIC_SCORES, ScoreCategory
+from constants import STATIC_SCORES, ScoreCategory, CATEGORY_COUNT
 from state import GameState
 from utils import score_roll
 
@@ -169,6 +169,21 @@ class Sheet:
                 self.cells_bounds.y + i * self.cell_height + self.cell_height // 2,
             )
             self.score_text_rect.append(rect)
+
+        total_score = str(sum(
+            score for i, score in enumerate(player_scores) if score != ScoreCategory.UNSELECTED.value
+            and i not in STATIC_SCORES
+        ))
+        self.score_text.append(
+            self.font.render(total_score, True, "black")
+        )
+        rect = self.score_text[-1].get_rect()
+        rect.x = self.cells_bounds.x + self.cell_width * column_index + 8
+        rect.center = (
+            rect.center[0],
+            self.cells_bounds.y + CATEGORY_COUNT * self.cell_height + self.cell_height // 2,
+        )
+        self.score_text_rect.append(rect)
 
     def update_score(self, state: GameState, after_roll=False):
         """
