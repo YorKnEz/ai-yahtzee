@@ -17,9 +17,7 @@ screen = pygame.display.set_mode(size)
 screen_bounds = pygame.Rect(0, 0, width, height)
 # screen has two parts: game and scoresheet
 game_bounds = pygame.Rect(0, 0, int(0.75 * width), height)  # 75% of screen
-sheet_bounds = pygame.Rect(
-    game_bounds.right, 0, int(0.25 * width), height
-)  # 25% of screen
+sheet_bounds = pygame.Rect(game_bounds.right, 0, int(0.25 * width), height)  # 25% of screen
 
 clock = pygame.time.Clock()
 running = True
@@ -45,15 +43,7 @@ replay_button_bounds = pygame.Rect((width - 300) // 2 + 50, (height - 200) // 2 
 replay_button_bounds.center = game_bounds.center[0], replay_button_bounds.center[1]
 replay_button = Button(replay_button_bounds, "Replay", font)
 
-sheet = Sheet(
-    pygame.Rect(
-        sheet_bounds.x,
-        sheet_bounds.y + 32 - 4,
-        sheet_bounds.width - 32,
-        sheet_bounds.height - 60 + 8,
-    ),
-    font,
-)
+sheet = Sheet(sheet_bounds, font)
 
 
 def render(final_scores: Tuple[int, int] = None):

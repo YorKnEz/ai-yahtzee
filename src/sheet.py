@@ -32,35 +32,45 @@ class Sheet:
 
         border_padding = 2
 
-        # add exterior borders
-        bounds.x += border_padding
-        bounds.y += border_padding
-        bounds.width -= 3 * border_padding
-        bounds.height -= 3 * border_padding
-        self.lines = [
-            (bounds.topleft, bounds.topright),
-            (bounds.topright, bounds.bottomright),
-            (bounds.bottomright, bounds.bottomleft),
-            (bounds.bottomleft, bounds.topleft),
-        ]
-        bounds.x += border_padding
-        bounds.y += border_padding
-        bounds.width -= border_padding
-        bounds.height -= border_padding
-
-        # from now on, bounds represents the box without the borders, math is easier this way
-        self.text = [
-            font.render(label, True, "black")
-            for label in (Sheet.row_labels + Sheet.col_labels)
-        ]
-        self.text_rect: list[pygame.Rect] = []
+        # add a margin of 24 pixels around the sheet and 4 pixel padding to take into account borders
+        self.bounds.x += 24
+        self.bounds.y += 24
+        self.bounds.height -= 48 + 4 * border_padding
+        self.bounds.width -= 48 + 4 * border_padding
 
         row_labels_len = len(Sheet.row_labels)
 
-        cell_height = bounds.height // 15  # there are 15 rows
-        cell_width = bounds.width // 2  # cell width for first col
+        # compute de width and height so that each row and column is divided evenly
+        cell_height = self.bounds.height // (row_labels_len + 1)  # extra row for the header
+        cell_width = self.bounds.width // 2  # cell width for first col
 
-        self.cells_bounds = bounds.copy()
+        self.bounds.height = cell_height * (row_labels_len + 1) + 4 * border_padding
+        self.bounds.width = cell_width * 2 + 4 * border_padding
+        self.bounds.center = (bounds.center[0], bounds.y + bounds.height // 2)
+
+        # add exterior borders
+        self.bounds.x += border_padding
+        self.bounds.y += border_padding
+        self.bounds.width -= 3 * border_padding
+        self.bounds.height -= 3 * border_padding
+        self.lines = [
+            (self.bounds.topleft, self.bounds.topright),
+            (self.bounds.topright, self.bounds.bottomright),
+            (self.bounds.bottomright, self.bounds.bottomleft),
+            (self.bounds.bottomleft, self.bounds.topleft),
+        ]
+        self.bounds.x += border_padding
+        self.bounds.y += border_padding
+        self.bounds.width -= border_padding
+        self.bounds.height -= border_padding
+
+        # from now on, bounds represents the box without the borders, math is easier this way
+        self.text = [font.render(label, True, "black") for label in (Sheet.row_labels + Sheet.col_labels)]
+        self.text_rect: list[pygame.Rect] = []
+
+        # bounds.center = (self.bounds.center[0], self.bounds.y + self.bounds.height // 2)
+
+        self.cells_bounds = self.bounds.copy()
         self.cells_bounds.x += cell_width
         self.cells_bounds.y += cell_height
         self.cells_bounds.width -= cell_width
@@ -69,10 +79,10 @@ class Sheet:
         # init rects for row_labels
         for i in range(row_labels_len):
             rect = self.text[i].get_rect()
-            rect.x = bounds.x + 8
+            rect.x = self.bounds.x + 8
             rect.center = (
                 rect.center[0],
-                bounds.y + (i + 1) * cell_height + cell_height // 2,
+                self.bounds.y + (i + 1) * cell_height + cell_height // 2,
             )
             self.text_rect.append(rect)
 
@@ -80,12 +90,12 @@ class Sheet:
             self.lines.append(
                 (
                     (
-                        bounds.x,
-                        bounds.y + (i + 1) * cell_height,
+                        self.bounds.x,
+                        self.bounds.y + (i + 1) * cell_height,
                     ),
                     (
-                        bounds.x + bounds.width,
-                        bounds.y + (i + 1) * cell_height,
+                        self.bounds.x + self.bounds.width,
+                        self.bounds.y + (i + 1) * cell_height,
                     ),
                 ),
             )
@@ -93,20 +103,20 @@ class Sheet:
         # init rects for col_labels
         for i in range(row_labels_len, row_labels_len + 2):
             rect = self.text[i].get_rect()
-            rect.x = bounds.x + cell_width + (i - 14) * (cell_width // 2) + 8
-            rect.center = (rect.center[0], bounds.y + cell_height // 2)
+            rect.x = self.bounds.x + cell_width + (i - row_labels_len) * (cell_width // 2) + 8
+            rect.center = (rect.center[0], self.bounds.y + cell_height // 2)
             self.text_rect.append(rect)
 
             # add vertical borders
             self.lines.append(
                 (
                     (
-                        bounds.x + cell_width + (i - 14) * (cell_width // 2),
-                        bounds.y,
+                        self.bounds.x + cell_width + (i - row_labels_len) * (cell_width // 2),
+                        self.bounds.y,
                     ),
                     (
-                        bounds.x + cell_width + (i - 14) * (cell_width // 2),
-                        bounds.y + bounds.height,
+                        self.bounds.x + cell_width + (i - row_labels_len) * (cell_width // 2),
+                        self.bounds.y + self.bounds.height,
                     ),
                 ),
             )
@@ -117,6 +127,12 @@ class Sheet:
         self.score_text = []
         self.score_text_rect = []
 
+        # subtract exterior borders
+        self.bounds.x -= 2 * border_padding
+        self.bounds.y -= 2 * border_padding
+        self.bounds.width += 4 * border_padding
+        self.bounds.height += 4 * border_padding
+
     def __score_for_player(
         self,
         column_index: int,
@@ -125,15 +141,11 @@ class Sheet:
     ):
         is_0_only_obtainable_score = all(
             obtained_score == 0
-            for obtained_score, player_score in
-            zip_longest(obtained_scores, player_scores)
-            if player_score == UNSELECTED_CATEGORY_VALUE
+            for i, (obtained_score, player_score) in enumerate(zip_longest(obtained_scores, player_scores))
+            if player_score == ScoreCategory.UNSELECTED.value and i not in STATIC_SCORES
         )
 
-        for i, (existing_score, possible_score) in enumerate(
-            zip_longest(player_scores, obtained_scores, fillvalue=0)
-        ):
-
+        for i, (existing_score, possible_score) in enumerate(zip_longest(player_scores, obtained_scores, fillvalue=0)):
             color = "black"
             display_number = existing_score
             if display_number == UNSELECTED_CATEGORY_VALUE:
@@ -144,9 +156,7 @@ class Sheet:
                     display_number = None
 
             self.score_text.append(
-                self.font.render(
-                    str(display_number) if display_number is not None else "", True, color
-                )
+                self.font.render(str(display_number) if display_number is not None else "", True, color)
             )
             rect = self.score_text[i].get_rect()
             rect.x = self.cells_bounds.x + self.cell_width * column_index + 8
