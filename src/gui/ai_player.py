@@ -1,5 +1,5 @@
 from ai import AI
-from . import Dice, Sheet
+from gui import Dice, Sheet
 from state import GameState
 
 

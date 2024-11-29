@@ -179,8 +179,6 @@ class Sheet:
             )
             self.score_text_rect.append(rect)
 
-        print(len(self.score_text), len(self.score_text_rect))
-
         total_score = str(sum(
             score for i, score in enumerate(player_scores) if score != ScoreCategory.UNSELECTED.value
         ))

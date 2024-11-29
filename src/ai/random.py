@@ -1,9 +1,8 @@
 from random import choice, random
 
+from ai import AI
 from constants import CATEGORY_COUNT
 from state import GameState
-
-from .ai import AI
 
 
 class RandomAI(AI):
