@@ -4,7 +4,7 @@ import pygame
 
 from ai import RandomAI
 from constants import FPS
-from gui import Button, Dice, Sheet, AIPlayer
+from gui import AIPlayer, Button, Dice, Sheet
 from state import GameState
 
 pygame.init()
@@ -38,11 +38,12 @@ replay_button_bounds.center = game_bounds.center[0], replay_button_bounds.center
 replay_button = Button(replay_button_bounds, "Replay", font)
 
 sheet = Sheet(sheet_bounds, font)
+final_scores: Tuple[int, int] | None = None
 
 ai: AIPlayer = AIPlayer(RandomAI(), sheet, dice)
 
 
-def render(final_scores: Tuple[int, int] | None = None):
+def render():
     dice.update(dt)
     screen.fill("purple")
 
@@ -76,16 +77,18 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-
             mouse_pos = pygame.mouse.get_pos()
+
             if state.is_final():
                 if replay_button.clicked(mouse_pos):
                     state = GameState()
                     dice = Dice(game_bounds, state.dice)
                     sheet.update_score(state)
-                    ai_state_no = 0
-                else:
-                    continue
+                    final_scores = None
+
+                    ai.reset()
+
+                continue
 
             if state.current_player != 0:
                 continue
@@ -114,10 +117,10 @@ while running:
     if not state.is_final() and state.current_player != 0 and not dice.in_animation():
         state = ai.play(dt, state)
 
-    if not state.is_final():
-        render()
-    else:
-        render((state.player_states[0].total_score(), state.player_states[1].total_score()))
+    if state.is_final():
+        final_scores = state.player_states[0].total_score(), state.player_states[1].total_score()
+
+    render()
 
     dt = clock.tick(FPS) / 1000
 

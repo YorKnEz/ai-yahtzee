@@ -42,3 +42,7 @@ class AIPlayer:
                     self.state = 0
 
         return state
+
+    def reset(self):
+        self.state = 0
+        self.wait_time = 0
