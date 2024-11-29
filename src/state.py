@@ -142,4 +142,4 @@ class PlayerState:
         return self.scores
 
     def total_score(self):
-        return sum(self.scores[6:])
+        return sum(self.scores)
