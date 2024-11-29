@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from constants import CATEGORY_COUNT, STATIC_SCORES, ScoreCategory
+from constants import CATEGORY_COUNT, ScoreCategory
 from utils import reroll, score_roll
 
 
@@ -49,11 +49,15 @@ class GameState:
         if player_index != self.current_player:
             return False
 
+        return self.is_valid_category_optimized_unsafe(category, player_index)
+
+    def is_valid_category_optimized_unsafe(self, category: int, player_index: int = 0) -> bool:
+        """
+        Determine whether the current player can choose the specified category
+        to claim their score for...
+        """
         category_ints = [enum_obj.value for enum_obj in ScoreCategory]
         if category not in category_ints:
-            return False
-
-        if category in STATIC_SCORES:
             return False
 
         player_state = self.player_states[player_index]
@@ -67,7 +71,7 @@ class GameState:
             for i, (obtained_score, player_score) in enumerate(
                 zip(predicted_scores, self.player_states[player_index].scores)
             )
-            if player_score == ScoreCategory.UNSELECTED.value and i not in STATIC_SCORES
+            if player_score == ScoreCategory.UNSELECTED.value
         )
 
         if not is_0_only_obtainable_score and predicted_scores[category] == 0:
@@ -75,47 +79,11 @@ class GameState:
 
         return True
 
-    def is_valid_category_optimized_unsafe(self, category: int) -> bool:
-        """
-        Determine whether the current player can choose the specified category
-        to claim their score for..
-        """
-        category_ints = [enum_obj.value for enum_obj in ScoreCategory]
-        if category not in category_ints:
-            return False
-
-        if category in STATIC_SCORES:
-            return False
-
-        player_state = self.player_states[0]
-        if player_state.scores[category] != ScoreCategory.UNSELECTED.value:
-            return False
-
-        predicted_scores = score_roll(self.dice)
-
-        is_0_only_obtainable_score = all(
-            obtained_score == 0
-            for i, (obtained_score, player_score) in enumerate(
-                zip(predicted_scores, self.player_states[0].scores)
-            )
-            if player_score == ScoreCategory.UNSELECTED.value and i not in STATIC_SCORES
-        )
-
-        if not is_0_only_obtainable_score and predicted_scores[category] == 0:
-            return False
-
-        return True
-
-    def apply_category(self, category: int, player_index: int = None) -> "GameState":
+    def apply_category_optimized_unsafe(self, category: int, player_index: int = 0) -> tuple["GameState", int]:
         """
         Return a new GameState with the given category transition applied
         (along with updated bonus, if it is the case).
         """
-        if player_index is None:
-            player_index = self.current_player
-
-        if not self.is_valid_category(category, player_index):
-            raise ValueError(f"Invalid category {category} or player {player_index}")
 
         new_state = deepcopy(self)
         player_state = new_state.player_states[player_index]
@@ -127,20 +95,18 @@ class GameState:
         predicted_scores = score_roll(new_state.dice)
         player_state.scores[category] = predicted_scores[category]
 
-        # see if first six categories have been completed and update sum and bonus accordingly
-        first_six_completed = not any(
-            score == ScoreCategory.UNSELECTED.value for score in player_state.scores[: ScoreCategory.SUM.value]
-        )
-
-        if player_state.scores[ScoreCategory.SUM.value] == ScoreCategory.UNSELECTED.value and first_six_completed:
-            player_state.scores[ScoreCategory.SUM.value] = sum(player_state.scores[: ScoreCategory.SUM.value])
-            player_state.scores[ScoreCategory.BONUS.value] = (
-                35 if player_state.scores[ScoreCategory.SUM.value] >= 63 else 0
-            )
-
         new_state.__next_turn()
 
-        return new_state
+        return new_state, predicted_scores[category]
+
+    def apply_category(self, category: int, player_index: int | None = None) -> "GameState":
+        if player_index is None:
+            player_index = self.current_player
+
+        if not self.is_valid_category(category, player_index):
+            raise ValueError(f"Invalid category {category} or player {player_index}")
+
+        return self.apply_category_optimized_unsafe(category, player_index)[0]
 
     def is_final(self):
         """

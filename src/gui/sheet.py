@@ -2,7 +2,7 @@ from itertools import zip_longest
 
 import pygame
 
-from constants import STATIC_SCORES, ScoreCategory, CATEGORY_COUNT
+from constants import ScoreCategory
 from state import GameState
 from utils import score_roll
 
@@ -146,8 +146,17 @@ class Sheet:
         is_0_only_obtainable_score = all(
             obtained_score == 0
             for i, (obtained_score, player_score) in enumerate(zip_longest(obtained_scores, player_scores))
-            if player_score == ScoreCategory.UNSELECTED.value and i not in STATIC_SCORES
+            if player_score == ScoreCategory.UNSELECTED.value
         )
+        are_first_6_rows_completed = not any(score == ScoreCategory.UNSELECTED.value for score in player_scores)
+        if are_first_6_rows_completed:
+            sum_first_6_rows = sum(player_scores[:6])
+            bonus_first_6_rows = 35 * (sum_first_6_rows >= 63)
+        else:
+            sum_first_6_rows = -1
+            bonus_first_6_rows = -1
+        player_scores = player_scores[:6] + [sum_first_6_rows, bonus_first_6_rows] + player_scores[6:]
+        obtained_scores = obtained_scores[:6] + [0, 0] + obtained_scores[6:]
 
         for i, (existing_score, possible_score) in enumerate(zip_longest(player_scores, obtained_scores, fillvalue=0)):
             color = "black"
@@ -156,7 +165,7 @@ class Sheet:
                 display_number = possible_score
                 color = "red"
 
-                if (not is_0_only_obtainable_score or i in STATIC_SCORES) and display_number == 0:
+                if (not is_0_only_obtainable_score) and display_number == 0:
                     display_number = None
 
             self.score_text.append(
@@ -170,9 +179,10 @@ class Sheet:
             )
             self.score_text_rect.append(rect)
 
+        print(len(self.score_text), len(self.score_text_rect))
+
         total_score = str(sum(
             score for i, score in enumerate(player_scores) if score != ScoreCategory.UNSELECTED.value
-            and i not in STATIC_SCORES
         ))
         self.score_text.append(
             self.font.render(total_score, True, "black")
@@ -181,7 +191,7 @@ class Sheet:
         rect.x = self.cells_bounds.x + self.cell_width * column_index + 8
         rect.center = (
             rect.center[0],
-            self.cells_bounds.y + CATEGORY_COUNT * self.cell_height + self.cell_height // 2,
+            self.cells_bounds.y + (len(self.row_labels) - 1) * self.cell_height + self.cell_height // 2,
         )
         self.score_text_rect.append(rect)
 
@@ -230,5 +240,5 @@ class Sheet:
             row = (y - self.cells_bounds.y) // self.cell_height
             col = (x - self.cells_bounds.x) // self.cell_width
             if Sheet.row_clickable[row]:
-                return row, col
+                return row - 2 if row > 7 else 0, col
         return None
