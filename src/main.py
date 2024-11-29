@@ -2,7 +2,7 @@ from typing import Tuple
 
 import pygame
 
-from ai import RandomAI
+from ai import QAI, RandomAI
 from constants import FPS
 from gui import AIPlayer, Button, Dice, Sheet
 from state import GameState

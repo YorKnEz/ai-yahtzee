@@ -75,6 +75,37 @@ class GameState:
 
         return True
 
+    def is_valid_category_optimized_unsafe(self, category: int) -> bool:
+        """
+        Determine whether the current player can choose the specified category
+        to claim their score for..
+        """
+        category_ints = [enum_obj.value for enum_obj in ScoreCategory]
+        if category not in category_ints:
+            return False
+
+        if category in STATIC_SCORES:
+            return False
+
+        player_state = self.player_states[0]
+        if player_state.scores[category] != ScoreCategory.UNSELECTED.value:
+            return False
+
+        predicted_scores = score_roll(self.dice)
+
+        is_0_only_obtainable_score = all(
+            obtained_score == 0
+            for i, (obtained_score, player_score) in enumerate(
+                zip(predicted_scores, self.player_states[0].scores)
+            )
+            if player_score == ScoreCategory.UNSELECTED.value and i not in STATIC_SCORES
+        )
+
+        if not is_0_only_obtainable_score and predicted_scores[category] == 0:
+            return False
+
+        return True
+
     def apply_category(self, category: int, player_index: int = None) -> "GameState":
         """
         Return a new GameState with the given category transition applied
