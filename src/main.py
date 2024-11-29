@@ -2,11 +2,9 @@ from typing import Tuple
 
 import pygame
 
-from ai import RandomAI
-from button import Button
+from ai import AI, RandomAI
 from constants import FPS
-from dice import Dice
-from sheet import Sheet
+from gui import Button, Dice, Sheet
 from state import GameState
 
 pygame.init()
@@ -46,7 +44,7 @@ replay_button = Button(replay_button_bounds, "Replay", font)
 sheet = Sheet(sheet_bounds, font)
 
 
-def render(final_scores: Tuple[int, int] = None):
+def render(final_scores: Tuple[int, int] | None = None):
     dice.update(dt)
     screen.fill("purple")
 

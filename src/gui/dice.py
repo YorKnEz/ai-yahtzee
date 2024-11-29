@@ -3,14 +3,15 @@ from copy import deepcopy
 
 import pygame
 
-from die import Die
 from utils import distance
+
+from .die import Die
 
 
 class Dice:
     die_size = 64
     dice_gap = 16
-    die_diag = die_size * (2 ** 0.5)
+    die_diag = die_size * (2**0.5)
 
     def __init__(self, game_bounds: pygame.Rect, dice_values: list[int] = None):
         self.faces = [
@@ -44,10 +45,7 @@ class Dice:
         self.current_pos = 0
 
         if not dice_values:
-            self.dice = [
-                Die(self.faces[i], i + 1, self.dice_pos[self.current_pos][i])
-                for i in range(5)
-            ]
+            self.dice = [Die(self.faces[i], i + 1, self.dice_pos[self.current_pos][i]) for i in range(5)]
         else:
             self.dice = [
                 Die(self.faces[value - 1], value, self.dice_pos[self.current_pos][i])
@@ -108,9 +106,7 @@ class Dice:
     def throw(self, dice_values: list[int]):
         spots = self.__get_random_dice_throw()
         for value, die, spot in zip(dice_values, self.dice, spots):
-            die.throw(
-                value, self.off_screen_pos[self.current_pos], spot, self.throw_bounds
-            )
+            die.throw(value, self.off_screen_pos[self.current_pos], spot, self.throw_bounds)
 
     def reset(self):
         self.current_pos = (self.current_pos + 1) % 2
