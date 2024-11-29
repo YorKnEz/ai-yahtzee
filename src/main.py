@@ -8,6 +8,7 @@ from gui import AIPlayer, Button, Dice, Sheet
 from state import GameState
 
 pygame.init()
+pygame.display.set_caption("Yahtzee")
 
 size = width, height = 1280, 720
 screen = pygame.display.set_mode(size)
