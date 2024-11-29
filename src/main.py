@@ -2,9 +2,9 @@ from typing import Tuple
 
 import pygame
 
-from ai import AI, RandomAI
+from ai import RandomAI
 from constants import FPS
-from gui import Button, Dice, Sheet
+from gui import Button, Dice, Sheet, AIPlayer
 from state import GameState
 
 pygame.init()
@@ -26,10 +26,6 @@ font = pygame.font.Font("assets/ldfcomicsans.ttf", 16)
 state = GameState()
 dice = Dice(game_bounds, state.dice)
 
-ai = RandomAI()
-ai_state_no = 0
-ai_wait_time = 0
-
 roll_dice_button_bounds = pygame.Rect(0, dice.dice[1].bounds.top - 64 - 16, 200, 64)
 roll_dice_button_bounds.center = (
     game_bounds.center[0],
@@ -42,6 +38,8 @@ replay_button_bounds.center = game_bounds.center[0], replay_button_bounds.center
 replay_button = Button(replay_button_bounds, "Replay", font)
 
 sheet = Sheet(sheet_bounds, font)
+
+ai: AIPlayer = AIPlayer(RandomAI(), sheet, dice)
 
 
 def render(final_scores: Tuple[int, int] | None = None):
@@ -114,33 +112,7 @@ while running:
                     pass
 
     if not state.is_final() and state.current_player != 0 and not dice.in_animation():
-        match ai_state_no:
-            case 0:  # picking dice
-                if ai.wants_reroll(state):
-                    state = ai.reroll(state)
-                    dice.pick([i for i in range(5) if i not in ai.unpicked_dice])
-                    ai_wait_time = 0
-                    ai_state_no = 3
-                else:
-                    ai_state_no = 2
-            case 1:  # throw dice
-                dice.throw(state.dice)
-                sheet.update_score(state, after_roll=True)
-                ai_wait_time = 0
-                ai_state_no = 4
-            case 2:  # select category
-                state = ai.pick_category(state)
-                dice.reset()
-                sheet.update_score(state)
-                ai_state_no = 0
-            case 3:  # thinking time after pick
-                ai_wait_time += dt
-                if ai_wait_time > 1.5:
-                    ai_state_no = 1
-            case 4:  # thinking time after reroll
-                ai_wait_time += dt
-                if ai_wait_time > 1.5:
-                    ai_state_no = 0
+        state = ai.play(dt, state)
 
     if not state.is_final():
         render()
