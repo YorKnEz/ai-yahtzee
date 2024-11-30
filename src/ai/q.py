@@ -1,15 +1,15 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from ai import AI
 from constants import ScoreCategory, CATEGORY_COUNT
 from state import GameState
 from utils import score_roll
+from timeit import timeit
 
 
 class QState:
     MAX_CATEGORY = 1 << 13
-    MAX_SUMS = 106
     MAX_DICE_THROWS = 252
     MAX_REROLLS = 3
 
@@ -30,14 +30,11 @@ class QState:
         scores = state.player_states[0].scores
 
         categories = sum((1 if score == ScoreCategory.UNSELECTED.value else 0) << i for i, score in enumerate(scores))
-        sum_first_six = sum(scores[:6])
 
         dice_id = self.dice_throw_id[tuple(sorted(state.dice))]
         rerolls = state.rerolls
 
-        return rerolls + QState.MAX_REROLLS * (
-                dice_id + QState.MAX_DICE_THROWS * (sum_first_six + QState.MAX_SUMS * categories)
-        )
+        return rerolls + QState.MAX_REROLLS * (dice_id + QState.MAX_DICE_THROWS * categories)
 
 
 class Q:
@@ -46,16 +43,16 @@ class Q:
     REROLL_CONFIGURATIONS_COUNT = len(REROLL_TRANSITIONS_LIST)
     # 13 possible categories + 31 reroll configurations + 1 for terminal state
     MAX_ACTIONS = CATEGORY_COUNT + REROLL_CONFIGURATIONS_COUNT + 1
-    # 2^13 categories choices * 106 max scores (first six categories) * 252 dice orders * 3 rerolls = 656474112 states
-    MAX_STATES = QState.MAX_CATEGORY * QState.MAX_SUMS * QState.MAX_DICE_THROWS * QState.MAX_REROLLS
+    # 2^13 categories choices * 252 dice orders * 3 rerolls = 6_193_152 states
+    MAX_STATES = QState.MAX_CATEGORY * QState.MAX_DICE_THROWS * QState.MAX_REROLLS
 
     def __init__(self, *, epochs=100, discount_rate=0.9):
         # hyper-parameters
         self.epochs, self.discount_rate = epochs, discount_rate
         # q table
-        self.q = np.zeros(shape=(Q.MAX_ACTIONS, Q.MAX_STATES), dtype=np.float32)
+        self.q = np.zeros(shape=(Q.MAX_STATES, Q.MAX_ACTIONS), dtype=np.float32)
         # freq table
-        self.n = np.zeros(shape=(Q.MAX_ACTIONS, Q.MAX_STATES), dtype=np.uint32)
+        self.n = np.zeros(shape=(Q.MAX_STATES, Q.MAX_ACTIONS), dtype=np.uint32)
         self.exploration_factor = 1.0
 
         self.qstate = QState()
@@ -63,14 +60,17 @@ class Q:
     def __train(self):
         """Train for a single game/epoch."""
         state = GameState(1)
-        state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])
+        state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])
 
         next_state_id, next_reward = self.qstate.state_to_id(state), 0
         state_id, action, reward = None, None, None
 
         def next_action():
-            valid_actions = ([c for c in range(CATEGORY_COUNT) if state.is_valid_category_optimized_unsafe(c)]
-                             + [x + CATEGORY_COUNT for x in range(Q.REROLL_CONFIGURATIONS_COUNT)])
+            valid_actions = state.get_valid_categories_optimized_unsafe()
+
+            if state.rerolls > 0:
+                valid_actions += [x + CATEGORY_COUNT for x in range(Q.REROLL_CONFIGURATIONS_COUNT)]
+
             if np.random.rand() < self.exploration_factor:
                 return np.random.choice(valid_actions)
 
@@ -79,13 +79,14 @@ class Q:
         def perform_action():
             if action < CATEGORY_COUNT:
                 new_state, new_reward = state.apply_category_optimized_unsafe(action)
-                new_state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])
+                new_state = new_state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])
             else:
                 new_state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[action - CATEGORY_COUNT])
-                scores = score_roll(state.dice)
+                scores = score_roll(new_state.dice)
 
                 # ones: x1 + 35 / 21 * fr1 / 5, twos: x2 + 35 / 21 * 2fr2 / 5, ..., large_straight: x10 * b10 / sum(b)
                 # 35 = 35 / 21 * 1 + 35 / 21 * 2 + ... + 35 / 21 * 6
+
                 total = sum(
                     val + 35 / 21 * (i + 1) * val / (i + 1) / 5 for i, val in enumerate(scores[:6])
                     if val == ScoreCategory.UNSELECTED.value
@@ -94,7 +95,7 @@ class Q:
                     if val == ScoreCategory.UNSELECTED.value
                 )
                 cnt = sum(val == ScoreCategory.UNSELECTED.value for val in scores)
-                new_reward = total / cnt
+                new_reward = total / cnt if cnt != 0 else 0
 
             return new_state, self.qstate.state_to_id(new_state), new_reward
 
@@ -108,6 +109,8 @@ class Q:
             alpha = 1 / self.n[state_id, action]
             self.q[state_id, action] = ((1 - alpha) * self.q[state_id, action] + alpha *
                                         (reward + self.discount_rate * np.max(self.q[next_state_id])))
+
+            # print(self.q[state_id, action])
 
             state_id, action, reward = next_state_id, next_action(), next_reward
             state, next_state_id, next_reward = perform_action()
@@ -123,16 +126,18 @@ class Q:
         for _ in range(self.epochs):
             results.append(self.__train())
 
-            self.exploration_factor = self.exploration_factor * 0.99
+            self.exploration_factor = max(self.exploration_factor * 0.999954, 0.1)
 
         plt.plot(results, ".-b")
         plt.show()
+        print(sum(results) / len(results))
+        # self.__save()
 
     def __save(self):
-        raise NotImplementedError()
+        np.savez("q.npz", q=self.q, exploration_factor=self.exploration_factor)
 
     def __load(self):
-        raise NotImplementedError()
+        self.q, self.exploration_factor = np.load("q.npz")
 
 
 class QAI(AI):
@@ -152,5 +157,5 @@ class QAI(AI):
 
 
 if __name__ == "__main__":
-    q = Q()
-    q.train()
+    q = Q(epochs=1000)
+    print(f"{timeit(lambda: q.train(), number=1):.2f} seconds")

@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from constants import CATEGORY_COUNT, ScoreCategory
 from utils import reroll, score_roll
 
@@ -33,7 +31,7 @@ class GameState:
         if not self.__is_valid_reroll_by_unpicked_dice(unpicked_dice):
             raise ValueError(f"Invalid reroll {unpicked_dice}")
 
-        new_state = deepcopy(self)
+        new_state = self
         new_state.dice = reroll(new_state.dice, unpicked_dice)
         new_state.rerolls -= 1
         return new_state
@@ -49,6 +47,10 @@ class GameState:
         if player_index != self.current_player:
             return False
 
+        category_ints = {enum_obj.value for enum_obj in ScoreCategory}
+        if category not in category_ints:
+            return False
+
         return self.is_valid_category_optimized_unsafe(category, player_index)
 
     def is_valid_category_optimized_unsafe(self, category: int, player_index: int = 0) -> bool:
@@ -56,10 +58,6 @@ class GameState:
         Determine whether the current player can choose the specified category
         to claim their score for...
         """
-        category_ints = [enum_obj.value for enum_obj in ScoreCategory]
-        if category not in category_ints:
-            return False
-
         player_state = self.player_states[player_index]
         if player_state.scores[category] != ScoreCategory.UNSELECTED.value:
             return False
@@ -79,13 +77,25 @@ class GameState:
 
         return True
 
+    def get_valid_categories_optimized_unsafe(self, player_index: int = 0) -> list[int]:
+        predicted_scores = score_roll(self.dice)
+        is_0_only_obtainable_score = all(
+            obtained_score == 0
+            for i, (obtained_score, player_score) in enumerate(
+                zip(predicted_scores, self.player_states[player_index].scores)
+            )
+            if player_score == ScoreCategory.UNSELECTED.value
+        )
+        return [c for c in range(CATEGORY_COUNT) if (predicted_scores[c] == 0) == is_0_only_obtainable_score and
+                self.player_states[player_index].scores[c] == ScoreCategory.UNSELECTED.value]
+
     def apply_category_optimized_unsafe(self, category: int, player_index: int = 0) -> tuple["GameState", int]:
         """
         Return a new GameState with the given category transition applied
         (along with updated bonus, if it is the case).
         """
 
-        new_state = deepcopy(self)
+        new_state = self
         player_state = new_state.player_states[player_index]
 
         # multi-yahtzee
@@ -112,12 +122,16 @@ class GameState:
         """
         Return whether the current GameState is final.
         """
-        if any(
-            any(score == ScoreCategory.UNSELECTED.value for score in player.scores) for player in self.player_states
-        ):
-            return False
+        return not any(
+            any(score == ScoreCategory.UNSELECTED.value for score in player.scores)
+            for player in self.player_states
+        )
 
-        return True
+    def __repr__(self):
+        return f"GameState({self.dice}, {self.current_player}, {self.rerolls}, {self.player_states})"
+
+    def __str__(self):
+        return repr(self)
 
 
 class PlayerState:
@@ -128,18 +142,11 @@ class PlayerState:
     def __init__(self) -> None:
         self.scores = [ScoreCategory.UNSELECTED.value] * CATEGORY_COUNT
 
-    @staticmethod
-    def from_array(player_scores: list[int]) -> "PlayerState":
-        assert len(player_scores) == CATEGORY_COUNT
-        new_state = PlayerState()
-        new_state.scores = deepcopy(player_scores)
-        return new_state
-
-    def to_array(self) -> list[int]:
-        """
-        Transform player state into array of integers.
-        """
-        return self.scores
-
     def total_score(self):
         return sum(self.scores)
+
+    def __repr__(self) -> str:
+        return f"Player state: {self.scores}"
+
+    def __str__(self) -> str:
+        return repr(self)
