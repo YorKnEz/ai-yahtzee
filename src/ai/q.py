@@ -1,12 +1,14 @@
+from time import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 from ai import AI
-from constants import ScoreCategory, CATEGORY_COUNT
+from constants import CATEGORY_COUNT, ScoreCategory
 from state import GameState
 from utils import score_roll
-from timeit import timeit
 
+# np.set_printoptions(threshold=sys.maxsize)
 
 class QState:
     MAX_CATEGORY = 1 << 13
@@ -46,18 +48,15 @@ class Q:
     # 2^13 categories choices * 252 dice orders * 3 rerolls = 6_193_152 states
     MAX_STATES = QState.MAX_CATEGORY * QState.MAX_DICE_THROWS * QState.MAX_REROLLS
 
-    def __init__(self, *, epochs=100, discount_rate=0.9):
-        # hyper-parameters
-        self.epochs, self.discount_rate = epochs, discount_rate
+    def __init__(self, q=None, n=None):
         # q table
-        self.q = np.zeros(shape=(Q.MAX_STATES, Q.MAX_ACTIONS), dtype=np.float32)
+        self.q = np.zeros(shape=(Q.MAX_STATES, Q.MAX_ACTIONS), dtype=np.float32) if q is None else q
         # freq table
-        self.n = np.zeros(shape=(Q.MAX_STATES, Q.MAX_ACTIONS), dtype=np.uint32)
-        self.exploration_factor = 1.0
+        self.n = np.zeros(shape=(Q.MAX_STATES, Q.MAX_ACTIONS), dtype=np.uint32) if n is None else n
 
         self.qstate = QState()
 
-    def __train(self):
+    def __train(self, discount_rate, exploration_factor):
         """Train for a single game/epoch."""
         state = GameState(1)
         state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])
@@ -66,15 +65,21 @@ class Q:
         state_id, action, reward = None, None, None
 
         def next_action():
+            # exploration function that is a bit smarter than using an exploration_factor
+            # it essentially checks the frequency of the states in order to decide if it should explore the state or not
+            # 
+            # states that were explored less than 5 times will be viewed as potentially offering a reward of 1000 (which is ridiculous)
+            # which will encourage the agent to visit unexplored states first
+
             valid_actions = state.get_valid_categories_optimized_unsafe()
 
             if state.rerolls > 0:
                 valid_actions += [x + CATEGORY_COUNT for x in range(Q.REROLL_CONFIGURATIONS_COUNT)]
 
-            if np.random.rand() < self.exploration_factor:
-                return np.random.choice(valid_actions)
+            # if np.random.rand() < exploration_factor:
+            #     return np.random.choice(valid_actions)
 
-            return valid_actions[np.argmax(self.q[next_state_id, valid_actions])]
+            return valid_actions[np.argmax(np.where(self.n[next_state_id, valid_actions] < 5, 1000, self.q[next_state_id, valid_actions]))]
 
         def perform_action():
             if action < CATEGORY_COUNT:
@@ -102,42 +107,55 @@ class Q:
         # handle initial state
         state_id, action, reward = next_state_id, next_action(), next_reward
         state, next_state_id, next_reward = perform_action()
+        
+        # print(self.q[state_id], self.q[state_id, action])
 
         while not state.is_final():
             self.n[state_id, action] += 1
 
             alpha = 1 / self.n[state_id, action]
             self.q[state_id, action] = ((1 - alpha) * self.q[state_id, action] + alpha *
-                                        (reward + self.discount_rate * np.max(self.q[next_state_id])))
-
-            # print(self.q[state_id, action])
+                                        (reward + discount_rate * np.max(self.q[next_state_id])))
 
             state_id, action, reward = next_state_id, next_action(), next_reward
             state, next_state_id, next_reward = perform_action()
+    
+            # print(self.q[state_id], self.q[state_id, action])
 
         # TODO?: handle terminal state
         # self.q[next_state_id, Q.MAX_ACTIONS - 1] = next_reward
 
         return state.player_states[0].total_score()
 
-    def train(self):
+    def train(self, *, epochs=100, discount_rate=0.9, exploration_factor=1.0, exploration_decay=lambda e: e, save_state=False):
         """Train for a number of games/epochs."""
         results = []
-        for _ in range(self.epochs):
-            results.append(self.__train())
+        start = time()
+        for _ in range(epochs):
+            results.append(self.__train(discount_rate, exploration_factor))
 
-            self.exploration_factor = max(self.exploration_factor * 0.999954, 0.1)
+            # exploration_factor = exploration_decay(exploration_factor)
+        end = time()
 
-        plt.plot(results, ".-b")
-        plt.show()
-        print(sum(results) / len(results))
-        # self.__save()
+        # stats
+        plt.plot(results, ".-g")
+        plt.savefig("q_scores.png")
+        print(f"QAI Avg Score: {sum(results) / len(results)} in {end - start:.2f} seconds")
 
-    def __save(self):
-        np.savez("q.npz", q=self.q, exploration_factor=self.exploration_factor)
+        if save_state:
+            print("Saving state...", end=" ")
+            self.__save((epochs, discount_rate, exploration_factor))
+            print("done!")
 
-    def __load(self):
-        self.q, self.exploration_factor = np.load("q.npz")
+        return results
+
+    def __save(self, params):
+        np.savez("q_state.npz", params=params, q=self.q, n=self.n)
+
+    def from_state_file():
+        data = np.load("q_state.npz")
+        q, n = data['q'], data['n']
+        return Q(q, n), data['params']
 
 
 class QAI(AI):
@@ -154,8 +172,3 @@ class QAI(AI):
 
     def pick_category(self, state: GameState) -> GameState:
         raise NotImplementedError()
-
-
-if __name__ == "__main__":
-    q = Q(epochs=1000)
-    print(f"{timeit(lambda: q.train(), number=1):.2f} seconds")
