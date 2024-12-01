@@ -47,8 +47,7 @@ class GameState:
         if player_index != self.current_player:
             return False
 
-        category_ints = {enum_obj.value for enum_obj in ScoreCategory}
-        if category not in category_ints:
+        if not (0 <= category < CATEGORY_COUNT):
             return False
 
         return self.is_valid_category_optimized_unsafe(category, player_index)
@@ -81,13 +80,15 @@ class GameState:
         predicted_scores = score_roll(self.dice)
         is_0_only_obtainable_score = all(
             obtained_score == 0
-            for i, (obtained_score, player_score) in enumerate(
-                zip(predicted_scores, self.player_states[player_index].scores)
-            )
+            for obtained_score, player_score in zip(predicted_scores, self.player_states[player_index].scores)
             if player_score == ScoreCategory.UNSELECTED.value
         )
-        return [c for c in range(CATEGORY_COUNT) if (predicted_scores[c] == 0) == is_0_only_obtainable_score and
-                self.player_states[player_index].scores[c] == ScoreCategory.UNSELECTED.value]
+        return [
+            c
+            for c in range(CATEGORY_COUNT)
+            if (predicted_scores[c] == 0) == is_0_only_obtainable_score
+            and self.player_states[player_index].scores[c] == ScoreCategory.UNSELECTED.value
+        ]
 
     def apply_category_optimized_unsafe(self, category: int, player_index: int = 0) -> tuple["GameState", int]:
         """
@@ -123,8 +124,7 @@ class GameState:
         Return whether the current GameState is final.
         """
         return not any(
-            any(score == ScoreCategory.UNSELECTED.value for score in player.scores)
-            for player in self.player_states
+            any(score == ScoreCategory.UNSELECTED.value for score in player.scores) for player in self.player_states
         )
 
     def __repr__(self):

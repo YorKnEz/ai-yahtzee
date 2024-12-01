@@ -16,18 +16,21 @@ class RandomAI(AI):
         return state.rerolls == state.REROLLS_PER_ROUND or (state.rerolls > 0 and random() < 0.5)
 
     def reroll(self, state: GameState) -> GameState:
-        if state.rerolls == state.REROLLS_PER_ROUND:
-            return state.apply_reroll_by_unpicked_dice(self.unpicked_dice)
+        self.unpicked_dice = (
+            RandomAI.REROLL_TRANSITIONS_LIST[30]
+            if state.rerolls == state.REROLLS_PER_ROUND
+            else choice(RandomAI.REROLL_TRANSITIONS_LIST)
+        )
 
-        self.unpicked_dice = choice(RandomAI.REROLL_TRANSITIONS_LIST)
         return state.apply_reroll_by_unpicked_dice(self.unpicked_dice)
 
     def pick_category(self, state: GameState) -> GameState:
-        self.selected_category = choice(
+        selected_category = choice(
             [category for category in range(CATEGORY_COUNT) if state.is_valid_category(category)]
         )
         self.unpicked_dice = AI.REROLL_TRANSITIONS[30]
-        return state.apply_category(self.selected_category)
+        return state.apply_category(selected_category)
+
 
 class R:
 
