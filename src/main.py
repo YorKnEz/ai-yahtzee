@@ -14,9 +14,7 @@ screen = pygame.display.set_mode(size)
 screen_bounds = pygame.Rect(0, 0, width, height)
 # screen has two parts: game and scoresheet
 game_bounds = pygame.Rect(0, 0, int(0.75 * width), height)  # 75% of screen
-sheet_bounds = pygame.Rect(
-    game_bounds.right, 0, int(0.25 * width), height
-)  # 25% of screen
+sheet_bounds = pygame.Rect(game_bounds.right, 0, int(0.25 * width), height)  # 25% of screen
 
 clock = pygame.time.Clock()
 running = True
@@ -34,16 +32,14 @@ roll_dice_button_bounds.center = (
 )
 roll_dice_button = Button(roll_dice_button_bounds, "Roll dice", font)
 
-replay_button_bounds = pygame.Rect(
-    (width - 300) // 2 + 50, (height - 200) // 2 + 120, 200, 50
-)
+replay_button_bounds = pygame.Rect((width - 300) // 2 + 50, (height - 200) // 2 + 120, 200, 50)
 replay_button_bounds.center = game_bounds.center[0], replay_button_bounds.center[1]
 replay_button = Button(replay_button_bounds, "Replay", font)
 
 sheet = Sheet(sheet_bounds, font)
 final_scores: tuple[int, int] | None = None
 
-ai: AIPlayer = AIPlayer(RandomAI(), sheet, dice)
+ai: AIPlayer = AIPlayer(QAI(), sheet, dice)
 
 
 def render():

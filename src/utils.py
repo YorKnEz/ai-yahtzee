@@ -99,7 +99,7 @@ def point_in_convex_polygon(point: tuple[float, float], poly_points: list[tuple[
     return True
 
 
-def distance(a: (float, float), b: (float, float)):
+def distance(a: tuple[float, float], b: tuple[float, float]):
     return math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
 
