@@ -249,12 +249,12 @@ class QSmall:
                 )
 
                 # a more intuitive way to rewrite this would be:
-                # new_reward = sum(1/13 * (x + 35 if only 5/6 completed and x unpicked) for x = ones, twos, ..., sixes) +
-                #               1/13 * sum(x for x = two of a kind, ..., large straight) +
-                #               1/13 * (yahtzee + yahtzee_bonus)
+                # new_reward = (sum((x + 35 if only 5/6 completed and x unpicked) for x = ones, twos, ..., sixes) +
+                #               sum(x for x = two of a kind, ..., large straight) +
+                #               (yahtzee + yahtzee_bonus))
                 #
                 # basically we reward the agent by the mean of
-                new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / CATEGORY_COUNT
+                new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / min(1, sum(score > 0 for score in scores))
 
             return new_state, self.qstate.state_to_small_id(new_state), new_reward
 
