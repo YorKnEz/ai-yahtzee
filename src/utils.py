@@ -1,6 +1,7 @@
 import math
-import random
 from collections import Counter
+
+import numpy as np
 
 from constants import CATEGORY_COUNT, ScoreCategory
 
@@ -9,7 +10,7 @@ def roll_random_dice(dice_no: int):
     """
     Return an array with `dice_no` random values from 1 to 6.
     """
-    return [random.randint(1, 6) for _ in range(dice_no)]
+    return np.random.randint(1, 7, size=dice_no)
 
 
 def reroll(dice_roll: list[int], to_roll: list[int]) -> list[int]:
