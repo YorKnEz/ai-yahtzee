@@ -141,10 +141,6 @@ class Sheet:
         player_scores: list[int],
         obtained_scores: list[int],
     ):
-        if len(obtained_scores) != len(player_scores):
-            print("Prostule!!!!!!!!!!!!!!!!!")
-            raise ValueError("Prostule!!!!!!!!!!!!!!!!!")
-
         is_0_only_obtainable_score = all(
             obtained_score == 0
             for obtained_score, player_score in zip(obtained_scores, player_scores)
@@ -196,7 +192,7 @@ class Sheet:
             self.score_text_rect.append(rect)
 
         # update total
-        total_score = str(sum(score for score in player_scores if score != ScoreCategory.UNSELECTED.value))
+        total_score = str(sum(score for score in player_scores[:6] + player_scores[8:] if score != ScoreCategory.UNSELECTED.value))
 
         self.score_text.append(self.font.render(total_score, True, "black"))
         rect = self.score_text[-1].get_rect()
