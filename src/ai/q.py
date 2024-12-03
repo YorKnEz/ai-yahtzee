@@ -108,9 +108,6 @@ class Q:
 
             # see how many categories of the first six are completed
             # if there are five, if we pick the missing category we get a bonus
-            # first_six_bonus = (
-            #     35 if sum(score != ScoreCategory.UNSELECTED.value for score in player_scores[:6]) == 5 else 0
-            # )
             first_six_sum, first_six_cnt = 0, 0
 
             for player_score, score in zip(player_scores[:6], scores[:6]):
@@ -132,8 +129,8 @@ class Q:
             #               sum(x for x = two of a kind, ..., large straight) +
             #               (yahtzee + yahtzee_bonus))
             #
-            # basically we reward the agent by a mean of the possible scores obtainable by each
-            # action (even if the action can't actually be selected)
+            # basically we reward the agent by a mean of the possible scores obtainable by each action (even if the 
+            # action can't actually be selected)
             # new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / max(1, sum(score > 0 for score in scores))
             new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / CATEGORY_COUNT
 
@@ -150,15 +147,15 @@ class Q:
 
             next_state, next_state_id, reward = self.__perform_action(state, action)
 
-            if not next_state.is_final():
-                self.n[state_id, action] += 1  # update N
-                alpha = 1 / self.n[state_id, action]  # compute learning rate
+            self.n[state_id, action] += 1  # update N
+            alpha = 1 / self.n[state_id, action]  # compute learning rate
 
-                # update Q
-                self.q[state_id, action] = (1 - alpha) * self.q[state_id, action] + alpha * (
-                    reward + discount_rate * np.max(self.q[next_state_id])
-                )
+            # update Q
+            self.q[state_id, action] = (1 - alpha) * self.q[state_id, action] + alpha * (
+                reward + discount_rate * np.max(self.q[next_state_id])
+            )
 
+            # proceed to next step
             state, state_id = next_state, next_state_id
 
         return state.player_states[0].total_score()
@@ -238,8 +235,8 @@ class Q:
         np.savez("states/q_state.npz", params=params, q=self.q, n=self.n)
 
     @staticmethod
-    def from_state_file():
-        data = np.load("states/q_state.npz")
+    def from_state_file(filename="q_state"):
+        data = np.load(f"states/{filename}.npz")
         q, n = data["q"], data["n"]
         return Q(q, n), data["params"]
 
@@ -247,8 +244,8 @@ class Q:
 class QAI(AI):
     REROLL_TRANSITIONS_LIST = list(AI.REROLL_TRANSITIONS.values())
 
-    def __init__(self, state_filename="states/q_state.npz"):
-        self.q = np.load(state_filename)["q"]
+    def __init__(self, state_filename="q_state"):
+        self.q = np.load(f"states/{state_filename}.npz")["q"]
         self.qstate = QState()
 
         self.next_action = None  # cache for next action

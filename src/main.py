@@ -26,10 +26,7 @@ state = GameState()
 dice = Dice(game_bounds, state.dice)
 
 roll_dice_button_bounds = pygame.Rect(0, dice.dice[1].bounds.top - 64 - 16, 200, 64)
-roll_dice_button_bounds.center = (
-    game_bounds.center[0],
-    roll_dice_button_bounds.center[1],
-)
+roll_dice_button_bounds.center = (game_bounds.center[0], roll_dice_button_bounds.center[1])
 roll_dice_button = Button(roll_dice_button_bounds, "Roll dice", font)
 
 replay_button_bounds = pygame.Rect((width - 300) // 2 + 50, (height - 200) // 2 + 120, 200, 50)
@@ -39,8 +36,8 @@ replay_button = Button(replay_button_bounds, "Replay", font)
 sheet = Sheet(sheet_bounds, font)
 final_scores: tuple[int, int] | None = None
 
-ai: AIPlayer = AIPlayer(QAI(), sheet, dice)
-ai2: AIPlayer = AIPlayer(QAI("states/bomberman.npz"), sheet, dice)
+ai: AIPlayer = AIPlayer(QAI("7"), sheet, dice)
+ai2: AIPlayer = AIPlayer(QAI("bomberman"), sheet, dice)
 
 
 def render():
@@ -82,7 +79,7 @@ while running:
             if state.is_final():
                 if replay_button.clicked(mouse_pos):
                     state = GameState()
-                    dice = Dice(game_bounds, state.dice)
+                    dice.reset()
                     sheet.update_score(state)
                     final_scores = None
 
