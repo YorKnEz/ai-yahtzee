@@ -95,6 +95,10 @@ class Q:
         """Compute the next state, its id and the reward retrieved for performing the given action in the given state."""
         if action < CATEGORY_COUNT:
             new_state, new_reward = state.apply_category_optimized_unsafe(action)
+
+            if action == ScoreCategory.CHANCE.value:
+                new_reward *= 0.3
+
             new_state = new_state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])
         else:
             new_state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[action - CATEGORY_COUNT])
@@ -107,9 +111,13 @@ class Q:
             # first_six_bonus = (
             #     35 if sum(score != ScoreCategory.UNSELECTED.value for score in player_scores[:6]) == 5 else 0
             # )
-            first_six_bonus = (
-                35 if sum(score for score in player_scores[:6] if score != ScoreCategory.UNSELECTED.value) >= 63 else 0
-            )
+            first_six_sum, first_six_cnt = 0, 0
+
+            for player_score, score in zip(player_scores[:6], scores[:6]):
+                first_six_sum += player_score if player_score != ScoreCategory.UNSELECTED.value else score
+                first_six_cnt += player_score != ScoreCategory.UNSELECTED.value
+
+            first_six_bonus = 35 if first_six_cnt == 5 and first_six_sum >= 63 else 0
 
             # if yahtzee and yahtzee already selected, then add bonus
             yahtzee_bonus = (
