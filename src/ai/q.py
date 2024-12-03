@@ -160,7 +160,7 @@ class Q:
 
         # stats
         plt.plot(results, ".-g")
-        plt.savefig("q_scores.png")
+        plt.savefig("graphs/q_scores.png")
         print(f"QAI Avg Score: {sum(results) / len(results)} in {end - start:.2f} seconds")
 
         if save_state:
@@ -171,10 +171,10 @@ class Q:
         return results
 
     def __save(self, params):
-        np.savez("q_state.npz", params=params, q=self.q, n=self.n)
+        np.savez("states/q_state.npz", params=params, q=self.q, n=self.n)
 
     def from_state_file():
-        data = np.load("q_state.npz")
+        data = np.load("states/q_state.npz")
         q, n = data["q"], data["n"]
         return Q(q, n), data["params"]
 
@@ -296,10 +296,19 @@ class QSmall:
             # exploration_factor = exploration_decay(exploration_factor)
         end = time()
 
-        # stats
+        # plot results
+        plt.title("Training scores")
         plt.plot(results, ".-g")
-        plt.savefig("q_small_scores.png")
-        print(f"Small QAI Avg Score: {sum(results) / len(results)} in {end - start:.2f} seconds")
+        plt.savefig("graphs/q_small_train_scores.png")
+        plt.close()
+
+        # plot the mean score over 1_000 epochs
+        plt.title("Training average scores over 1_000 epochs")
+        plt.plot(np.array(results).reshape(-1, 1_000).mean(axis=0), ".-g")
+        plt.savefig("graphs/q_small_train_avg_scores_1k.png")
+        plt.close()
+
+        print(f"QSmall Train Avg Score: {sum(results) / len(results)} in {end - start:.2f} seconds")
 
         if save_state:
             print("Saving state...", end=" ")
@@ -309,11 +318,11 @@ class QSmall:
         return results
 
     def __save(self, params):
-        np.savez("q_small_state.npz", params=params, q=self.q, n=self.n)
+        np.savez("states/q_small_state.npz", params=params, q=self.q, n=self.n)
 
     @staticmethod
     def from_state_file():
-        data = np.load("q_small_state.npz")
+        data = np.load("states/q_small_state.npz")
         q, n = data["q"], data["n"]
         return QSmall(q, n), data["params"]
 
@@ -322,7 +331,7 @@ class QAI(AI):
     REROLL_TRANSITIONS_LIST = list(AI.REROLL_TRANSITIONS.values())
 
     def __init__(self):
-        self.q = np.load("q_small_state.npz")["q"]
+        self.q = np.load("states/q_small_state.npz")["q"]
         self.qstate = QState()
 
         self.next_action = None  # cache for next action
