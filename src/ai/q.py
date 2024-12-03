@@ -302,7 +302,7 @@ class QSmall:
         # if np.random.rand() < exploration_factor:
         #     return np.random.choice(valid_actions)
 
-        x = valid_actions[
+        return valid_actions[
             np.argmax(
                 np.where(
                     self.n[state_id, valid_actions] < 5,
@@ -311,8 +311,6 @@ class QSmall:
                 )
             )
         ]
-        print(x > 13)
-        return x
 
         # # compute action values favoring less frequent actions (by a lot)
         # values = np.where(self.n[state_id, valid_actions] < 5, 1_000, self.q[state_id, valid_actions])
@@ -361,8 +359,8 @@ class QSmall:
             #
             # basically we reward the agent by a mean of the possible scores obtainable by each
             # action (even if the action can't actually be selected)
-            new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / max(1, sum(score > 0 for score in scores))
-            # new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / CATEGORY_COUNT
+            # new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / max(1, sum(score > 0 for score in scores))
+            new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / CATEGORY_COUNT
             # new_reward = sum(scores) + first_six_bonus + yahtzee_bonus
 
             # reward the agent based on the highest score obtainable from this next state
@@ -399,6 +397,7 @@ class QSmall:
                 )
 
             state = next_state
+            state_id = next_state_id
 
         return state.player_states[0].total_score()
 

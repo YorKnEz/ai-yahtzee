@@ -31,9 +31,9 @@ if __name__ == "__main__":
     # )
 
     # different stats
-    indices = np.random.choice(q.q.shape[0], size=20, replace=False)
-    for i, line in zip(indices, q.q[indices]):
-        print(line, i % 3)
+    # indices = np.random.choice(q.q.shape[0], size=20, replace=False)
+    # for i, line in zip(indices, q.q[indices]):
+    #     print(line, i % 3)
 
     print(f"Explored:       {np.count_nonzero(q.n) / q.n.size:.4f}")
     print(f"Fully explored: {np.count_nonzero(q.n > 5) / q.n.size:.4f}")
