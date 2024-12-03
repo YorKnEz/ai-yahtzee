@@ -266,10 +266,13 @@ class QAI(AI):
         return self.next_action
 
     def wants_reroll(self, state: GameState) -> bool:
+        # force reroll if no reroll occurred yet
+        if state.rerolls == GameState.REROLLS_PER_ROUND:
+            return True
+
         action = self.__get_next_action(state)
 
-        # force reroll if no reroll occurred yet
-        return state.rerolls == GameState.REROLLS_PER_ROUND or action >= CATEGORY_COUNT
+        return action >= CATEGORY_COUNT
 
     def reroll(self, state: GameState) -> GameState:
         # force reroll if no reroll occurred yet or compute the next action otherwise
