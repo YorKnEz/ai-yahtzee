@@ -36,7 +36,7 @@ class GameState:
         new_state.rerolls -= 1
         return new_state
 
-    def is_valid_category(self, category: int, player_index: int = None) -> bool:
+    def is_valid_category(self, category: int, player_index: int | None = None) -> bool:
         """
         Determine whether the current player can choose the specified category
         to claim their score for.
@@ -50,13 +50,6 @@ class GameState:
         if not (0 <= category < CATEGORY_COUNT):
             return False
 
-        return self.is_valid_category_optimized_unsafe(category, player_index)
-
-    def is_valid_category_optimized_unsafe(self, category: int, player_index: int = 0) -> bool:
-        """
-        Determine whether the current player can choose the specified category
-        to claim their score for...
-        """
         player_state = self.player_states[player_index]
         if player_state.scores[category] != ScoreCategory.UNSELECTED.value:
             return False
@@ -65,9 +58,7 @@ class GameState:
 
         is_0_only_obtainable_score = all(
             obtained_score == 0
-            for i, (obtained_score, player_score) in enumerate(
-                zip(predicted_scores, self.player_states[player_index].scores)
-            )
+            for obtained_score, player_score in zip(predicted_scores, self.player_states[player_index].scores)
             if player_score == ScoreCategory.UNSELECTED.value
         )
 
@@ -76,20 +67,6 @@ class GameState:
 
         return True
 
-    def get_valid_categories_optimized_unsafe(self, player_index: int = 0) -> list[int]:
-        predicted_scores = score_roll(self.dice)
-        is_0_only_obtainable_score = all(
-            obtained_score == 0
-            for obtained_score, player_score in zip(predicted_scores, self.player_states[player_index].scores)
-            if player_score == ScoreCategory.UNSELECTED.value
-        )
-        return [
-            c
-            for c in range(CATEGORY_COUNT)
-            if (predicted_scores[c] == 0) == is_0_only_obtainable_score
-            and self.player_states[player_index].scores[c] == ScoreCategory.UNSELECTED.value
-        ]
-
     def apply_category_optimized_unsafe(self, category: int, player_index: int = 0) -> tuple["GameState", int]:
         """
         Return a new GameState with the given category transition applied
@@ -97,18 +74,31 @@ class GameState:
         """
 
         new_state = self
-        player_state = new_state.player_states[player_index]
+
+        player_scores = new_state.player_states[player_index].scores
+        scores = score_roll(new_state.dice)
+
+        # see how many categories of the first six are completed
+        # if there are five, if we pick the missing category we get a bonus
+        first_six_sum, first_six_cnt = 0, 0
+
+        for player_score, score in zip(player_scores[:6], scores[:6]):
+            first_six_sum += player_score if player_score != ScoreCategory.UNSELECTED.value else score
+            first_six_cnt += player_score != ScoreCategory.UNSELECTED.value
+
+        # compute a bonus sum, first add first_six_bonus
+        bonus = 35 if first_six_cnt == 5 and first_six_sum >= 63 else 0
 
         # multi-yahtzee
-        if all(self.dice[0] == die for die in self.dice) and player_state.scores[ScoreCategory.YAHTZEE.value] > 0:
-            player_state.scores[ScoreCategory.YAHTZEE.value] += 100  # yahtzee bonus
+        if all(self.dice[0] == die for die in self.dice) and player_scores[ScoreCategory.YAHTZEE.value] > 0:
+            player_scores[ScoreCategory.YAHTZEE.value] += 100  # yahtzee bonus
+            bonus += 100  # add yahtzee bonus
 
-        predicted_scores = score_roll(new_state.dice)
-        player_state.scores[category] = predicted_scores[category]
+        player_scores[category] = scores[category]
 
         new_state.__next_turn()
 
-        return new_state, predicted_scores[category]
+        return new_state, scores[category] + bonus
 
     def apply_category(self, category: int, player_index: int | None = None) -> "GameState":
         if player_index is None:
@@ -118,6 +108,22 @@ class GameState:
             raise ValueError(f"Invalid category {category} or player {player_index}")
 
         return self.apply_category_optimized_unsafe(category, player_index)[0]
+
+    def get_valid_categories_optimized_unsafe(self, player_index: int = 0) -> list[int]:
+        predicted_scores = score_roll(self.dice)
+
+        is_0_only_obtainable_score = all(
+            obtained_score == 0
+            for obtained_score, player_score in zip(predicted_scores, self.player_states[player_index].scores)
+            if player_score == ScoreCategory.UNSELECTED.value
+        )
+
+        return [
+            c
+            for c in range(CATEGORY_COUNT)
+            if (predicted_scores[c] == 0) == is_0_only_obtainable_score
+            and self.player_states[player_index].scores[c] == ScoreCategory.UNSELECTED.value
+        ]
 
     def is_final(self):
         """
@@ -143,7 +149,7 @@ class PlayerState:
         self.scores = [ScoreCategory.UNSELECTED.value] * CATEGORY_COUNT
 
     def total_score(self):
-        return sum(self.scores) + 35 if sum(self.scores[:6]) >= 63 else 0
+        return sum(self.scores) + (35 if sum(self.scores[:6]) >= 63 else 0)
 
     def __repr__(self) -> str:
         return f"Player state: {self.scores}"
