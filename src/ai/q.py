@@ -48,7 +48,7 @@ class Q:
 
         self.qstate = QState()
 
-    def __next_action(self, state: GameState, state_id, exploration_factor=0.0, test=False):
+    def __next_action(self, state: GameState, state_id, exploration_factor=0.0, exploration_threshold=5, test=False):
         """Compute the next action given the current state and its id."""
         # exploration function that is a bit smarter than using an exploration_factor
         # it essentially checks the frequency of the states in order to decide if it should explore
@@ -69,27 +69,27 @@ class Q:
         # if np.random.rand() < exploration_factor:
         #     return np.random.choice(valid_actions)
 
-        # return valid_actions[
-        #     np.argmax(
-        #         np.where(
-        #             self.n[state_id, valid_actions] < 5,
-        #             1_000_000,
-        #             self.q[state_id, valid_actions],
-        #         )
-        #     )
-        # ]
+        return valid_actions[
+            np.argmax(
+                np.where(
+                    self.n[state_id, valid_actions] < exploration_threshold,
+                    1_000_000,
+                    self.q[state_id, valid_actions],
+                )
+            )
+        ]
 
-        # compute action values favoring less frequent actions (by a lot)
-        values = np.where(self.n[state_id, valid_actions] < 5, 1_000, self.q[state_id, valid_actions])
-
-        # compute a probability distributions of the values, use softmax
+        # # compute action values favoring less frequent actions (by a lot)
+        # values = np.where(self.n[state_id, valid_actions] < exploration_threshold, 1_000, self.q[state_id, valid_actions])
         #
-        # normalize the values before np.exp so that values don't blow up
-        exp = np.exp(values / 1_000)
-        prob = exp / exp.sum()
-
-        # return an action according to this probability distribution
-        return np.random.choice(valid_actions, p=prob)
+        # # compute a probability distributions of the values, use softmax
+        # #
+        # # normalize the values before np.exp so that values don't blow up
+        # exp = np.exp(values / 1_000)
+        # prob = exp / exp.sum()
+        #
+        # # return an action according to this probability distribution
+        # return np.random.choice(valid_actions, p=prob)
 
     def __perform_action(self, state: GameState, action):
         """Compute the next state, its id and the reward retrieved for performing the given action in the given state."""
@@ -131,14 +131,14 @@ class Q:
 
         return new_state, self.qstate.state_to_id(new_state), new_reward
 
-    def __train(self, discount_rate, exploration_factor):
+    def __train(self, discount_rate, exploration_factor, exploration_threshold):
         """Train for a single game/epoch."""
         state = GameState(1)
         state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])  # first roll
         state_id = self.qstate.state_to_id(state)
 
         while not state.is_final():
-            action = self.__next_action(state, state_id, exploration_factor)
+            action = self.__next_action(state, state_id, exploration_factor, exploration_threshold)
 
             next_state, next_state_id, reward = self.__perform_action(state, action)
 
@@ -162,13 +162,14 @@ class Q:
         discount_rate=0.9,
         exploration_factor=1.0,
         exploration_decay=lambda e: e,
+        exploration_threshold=5,
         save_state=False,
     ):
         """Train for a number of games/epochs."""
         results = []
         start = time()
         for _ in range(epochs):
-            results.append(self.__train(discount_rate, exploration_factor))
+            results.append(self.__train(discount_rate, exploration_factor, exploration_threshold))
 
             exploration_factor = exploration_decay(exploration_factor)
         end = time()
