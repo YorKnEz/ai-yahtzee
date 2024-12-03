@@ -8,8 +8,6 @@ from constants import CATEGORY_COUNT, ScoreCategory
 from state import GameState
 from utils import score_roll
 
-# np.set_printoptions(threshold=sys.maxsize)
-
 
 class QState:
     MAX_CATEGORY = 1 << 13
@@ -190,7 +188,7 @@ class QSmall:
 
         self.qstate = QState()
 
-    def __train(self, discount_rate, exploration_factor):
+    def __train_old(self, discount_rate, exploration_factor):
         """Train for a single game/epoch."""
         state = GameState(1)
         state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])
@@ -203,7 +201,7 @@ class QSmall:
             # it essentially checks the frequency of the states in order to decide if it should explore the state or not
             #
             # states that were explored less than 5 times will be
-            # viewed as potentially offering a reward of 1000 (which is ridiculous)
+            # viewed as potentially offering a reward of 1_000_000 (which is ridiculous)
             # which will encourage the agent to visit unexplored states first
 
             valid_actions = state.get_valid_categories_optimized_unsafe()
@@ -218,7 +216,7 @@ class QSmall:
                 np.argmax(
                     np.where(
                         self.n[next_state_id, valid_actions] < 5,
-                        1000,
+                        1_000_000,
                         self.q[next_state_id, valid_actions],
                     )
                 )
@@ -236,8 +234,13 @@ class QSmall:
 
                 # see how many categories of the first six are completed
                 # if there are five, if we pick the missing category we get a bonus
+                # first_six_bonus = (
+                #     35 if sum(score != ScoreCategory.UNSELECTED.value for score in player_scores[:6]) == 5 else 0
+                # )
                 first_six_bonus = (
-                    35 if sum(score != ScoreCategory.UNSELECTED.value for score in player_scores[:6]) == 5 else 0
+                    35
+                    if sum(score for score in player_scores[:6] if score != ScoreCategory.UNSELECTED.value) >= 63
+                    else 0
                 )
 
                 # if yahtzee and yahtzee already selected, then add bonus
@@ -254,7 +257,10 @@ class QSmall:
                 #               (yahtzee + yahtzee_bonus))
                 #
                 # basically we reward the agent by the mean of
-                new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / min(1, sum(score > 0 for score in scores))
+                new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / max(
+                    1, sum(score > 0 for score in scores)
+                )
+                # new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / CATEGORY_COUNT
 
             return new_state, self.qstate.state_to_small_id(new_state), new_reward
 
@@ -278,10 +284,128 @@ class QSmall:
 
         return state.player_states[0].total_score()
 
+    def __next_action(self, state: GameState, state_id, exploration_factor=0.0):
+        """Compute the next action given the current state and its id."""
+        # exploration function that is a bit smarter than using an exploration_factor
+        # it essentially checks the frequency of the states in order to decide if it should explore
+        # the state or not
+        #
+        # states that were explored less than 5 times will be viewed as potentially offering a
+        # reward of 1_000 (which is ridiculous) which will encourage the agent to visit
+        # unexplored states first
+
+        valid_actions = state.get_valid_categories_optimized_unsafe()
+
+        if state.rerolls > 0:
+            valid_actions += [x + CATEGORY_COUNT for x in range(Q.REROLL_CONFIGURATIONS_COUNT)]
+
+        # if np.random.rand() < exploration_factor:
+        #     return np.random.choice(valid_actions)
+
+        x = valid_actions[
+            np.argmax(
+                np.where(
+                    self.n[state_id, valid_actions] < 5,
+                    1_000_000,
+                    self.q[state_id, valid_actions],
+                )
+            )
+        ]
+        print(x > 13)
+        return x
+
+        # # compute action values favoring less frequent actions (by a lot)
+        # values = np.where(self.n[state_id, valid_actions] < 5, 1_000, self.q[state_id, valid_actions])
+        #
+        # # compute a probability distributions of the values, use softmax
+        # #
+        # # normalize the values before np.exp so that values don't blow up
+        # exp = np.exp(values / 1_000)
+        # prob = exp / exp.sum()
+        #
+        # # return an action according to this probability distribution
+        # return np.random.choice(valid_actions, p=prob)
+
+    def __perform_action(self, state: GameState, action):
+        """Compute the next state, its id and the reward retrieved for performing the given action in the given state."""
+        if action < CATEGORY_COUNT:
+            new_state, new_reward = state.apply_category_optimized_unsafe(action)
+            new_state = new_state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])
+        else:
+            new_state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[action - CATEGORY_COUNT])
+            player_scores = new_state.player_states[0].scores
+
+            scores = score_roll(new_state.dice)
+
+            # see how many categories of the first six are completed
+            # if there are five, if we pick the missing category we get a bonus
+            # first_six_bonus = (
+            #     35 if sum(score != ScoreCategory.UNSELECTED.value for score in player_scores[:6]) == 5 else 0
+            # )
+            first_six_bonus = (
+                35 if sum(score for score in player_scores[:6] if score != ScoreCategory.UNSELECTED.value) >= 63 else 0
+            )
+
+            # if yahtzee and yahtzee already selected, then add bonus
+            yahtzee_bonus = (
+                100
+                if all(die == new_state.dice[0] for die in new_state.dice)
+                and player_scores[ScoreCategory.YAHTZEE.value] != ScoreCategory.UNSELECTED.value
+                else 0
+            )
+
+            # a more intuitive way to rewrite this would be:
+            # new_reward = (sum((x + 35 if only 5/6 completed and x unpicked) for x = ones, twos, ..., sixes) +
+            #               sum(x for x = two of a kind, ..., large straight) +
+            #               (yahtzee + yahtzee_bonus))
+            #
+            # basically we reward the agent by a mean of the possible scores obtainable by each
+            # action (even if the action can't actually be selected)
+            new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / max(1, sum(score > 0 for score in scores))
+            # new_reward = (sum(scores) + first_six_bonus + yahtzee_bonus) / CATEGORY_COUNT
+            # new_reward = sum(scores) + first_six_bonus + yahtzee_bonus
+
+            # reward the agent based on the highest score obtainable from this next state
+            # scores[ScoreCategory.YAHTZEE.value] += yahtzee_bonus
+            # new_reward = max(
+            #     [
+            #         score + first_six_bonus if player_score == ScoreCategory.UNSELECTED.value else 0
+            #         for player_score, score in zip(player_scores[:6], scores[:6])
+            #     ]
+            #     + scores[6:]
+            #     + [first_six_bonus]
+            # )
+
+        return new_state, self.qstate.state_to_small_id(new_state), new_reward
+
+    def __train(self, discount_rate, exploration_factor):
+        """Train for a single game/epoch."""
+        state = GameState(1)
+        state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])  # first roll
+        state_id = self.qstate.state_to_small_id(state)
+
+        while not state.is_final():
+            action = self.__next_action(state, state_id, exploration_factor)
+
+            next_state, next_state_id, reward = self.__perform_action(state, action)
+
+            if not next_state.is_final():
+                self.n[state_id, action] += 1  # update N
+                alpha = 1 / self.n[state_id, action]  # compute learning rate
+
+                # update Q
+                self.q[state_id, action] = (1 - alpha) * self.q[state_id, action] + alpha * (
+                    reward + discount_rate * np.max(self.q[next_state_id])
+                )
+
+            state = next_state
+
+        return state.player_states[0].total_score()
+
     def train(
         self,
         *,
-        epochs=100,
+        epochs=10_000,
         discount_rate=0.9,
         exploration_factor=1.0,
         exploration_decay=lambda e: e,
@@ -292,8 +416,9 @@ class QSmall:
         start = time()
         for _ in range(epochs):
             results.append(self.__train(discount_rate, exploration_factor))
+            # results.append(self.__train_old(discount_rate, exploration_factor))
 
-            # exploration_factor = exploration_decay(exploration_factor)
+            exploration_factor = exploration_decay(exploration_factor)
         end = time()
 
         # plot results
@@ -314,6 +439,37 @@ class QSmall:
             print("Saving state...", end=" ")
             self.__save((epochs, discount_rate, exploration_factor))
             print("done!")
+
+        return results
+
+    def __test(self):
+        """Test for a single game/epoch."""
+        state = GameState(1)
+        state = state.apply_reroll_by_unpicked_dice(AI.REROLL_TRANSITIONS[30])  # first roll
+        state_id = self.qstate.state_to_small_id(state)
+
+        # simulate game
+        while not state.is_final():
+            action = self.__next_action(state, state_id)
+
+            state, state_id, _ = self.__perform_action(state, action)
+
+        # get the total score obtained
+        return state.player_states[0].total_score()
+
+    def test(self, *, epochs=1_000):
+        """Test for a number of games/epochs."""
+        start = time()
+        results = [self.__test() for _ in range(epochs)]
+        end = time()
+
+        # plot results
+        plt.title("Testing scores")
+        plt.plot(results, ".-g")
+        plt.savefig("graphs/q_small_test_scores.png")
+        plt.close()
+
+        print(f"QSmall Test Avg Score: {sum(results) / len(results)} in {end - start:.2f} seconds")
 
         return results
 

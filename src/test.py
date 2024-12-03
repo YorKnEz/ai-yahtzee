@@ -1,7 +1,5 @@
 import sys
-from time import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from ai.q import Q, QSmall
@@ -16,41 +14,37 @@ if __name__ == "__main__":
     # start new model
     q = QSmall()
     q.train(
-        epochs=100_000,
-        discount_rate=0.95,
-        # exploration_decay=lambda e: max(e * 0.999997, 0.1),
+        epochs=10_000,
+        discount_rate=0.9,
+        # exploration_factor=1.0,
         save_state=True,
     )
 
     # use existing model
-    q, (epochs, discount_rate, exploration_factor) = QSmall.from_state_file()
+    # q, (epochs, discount_rate, _) = QSmall.from_state_file()
 
     # train existing model
     # q.train(
-    #     epochs=400_000,
+    #     epochs=10_000,
     #     discount_rate=discount_rate,
-    #     # exploration_factor=exploration_factor,
-    #     # exploration_decay=lambda e: max(e * 0.999997, 0.1),
     #     save_state=True,
     # )
 
-    # print(q.n[np.random.choice(q.q.shape[0], size=20, replace=False)])
+    # different stats
+    indices = np.random.choice(q.q.shape[0], size=20, replace=False)
+    for i, line in zip(indices, q.q[indices]):
+        print(line, i % 3)
 
     print(f"Explored:       {np.count_nonzero(q.n) / q.n.size:.4f}")
     print(f"Fully explored: {np.count_nonzero(q.n > 5) / q.n.size:.4f}")
 
-    # test training so far
-    # q.train(
-    #     epochs=1_000,
-    #     discount_rate=discount_rate,
-    #     exploration_factor=0.0,  # don't allow exploration, use only current knowledge
-    #     # no decay
-    #     save_state=False,  # DO NOT persist state
-    # )
+    q_n_2_rerolls = q.n[np.arange(q.n.shape[0]) % 3 == 2]
+    q_n_1_rerolls = q.n[np.arange(q.n.shape[0]) % 3 == 1]
+    q_n_0_rerolls = q.n[np.arange(q.n.shape[0]) % 3 == 0, :13]
 
-    # a = q.n[np.any(q.n != 0, axis=1)]
-    # lines = 10
+    print(f"Fully explored with 2 rerolls left:    {np.count_nonzero(q_n_2_rerolls > 5) / q_n_2_rerolls.size:.4f}")
+    print(f"Fully explored with 1 reroll left:    {np.count_nonzero(q_n_1_rerolls > 5) / q_n_1_rerolls.size:.4f}")
+    print(f"Fully explored with 0 rerolls left: {np.count_nonzero(q_n_0_rerolls > 5) / q_n_0_rerolls.size:.4f}")
 
-    # for i in range(len(a) // lines):
-    #     print(a[i * lines : (i + 1) * lines])
-    #     input()
+    # test training so far on 1k epochs
+    q.test()
