@@ -2,29 +2,29 @@ import sys
 
 import numpy as np
 
-from ai.q import Q, QSmall
+from ai.q import Q
 
 np.set_printoptions(threshold=sys.maxsize)
 
 if __name__ == "__main__":
     # start new model
-    q = QSmall()
-    q.train(
-        epochs=10_000,
-        discount_rate=0.9,
-        # exploration_factor=1.0,
-        save_state=True,
-    )
-
-    # use existing model
-    # q, (epochs, discount_rate, _) = QSmall.from_state_file()
-
-    # train existing model
+    # q = Q()
     # q.train(
     #     epochs=10_000,
-    #     discount_rate=discount_rate,
+    #     discount_rate=0.95,
+    #     # exploration_factor=0.0,
     #     save_state=True,
     # )
+
+    # use existing model
+    q, (epochs, discount_rate, _) = Q.from_state_file()
+
+    # train existing model
+    q.train(
+        epochs=100_000,
+        discount_rate=discount_rate,
+        save_state=True,
+    )
 
     # different stats
     # indices = np.random.choice(q.q.shape[0], size=20, replace=False)
