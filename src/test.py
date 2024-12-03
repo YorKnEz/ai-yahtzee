@@ -3,14 +3,10 @@ import sys
 import numpy as np
 
 from ai.q import Q, QSmall
-from ai.random_ai import R
 
 np.set_printoptions(threshold=sys.maxsize)
 
 if __name__ == "__main__":
-    # r = R()
-    # r.train(epochs=1_000_000)
-
     # start new model
     q = QSmall()
     q.train(
