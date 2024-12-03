@@ -40,6 +40,7 @@ sheet = Sheet(sheet_bounds, font)
 final_scores: tuple[int, int] | None = None
 
 ai: AIPlayer = AIPlayer(QAI(), sheet, dice)
+ai2: AIPlayer = AIPlayer(QAI("states/bomberman.npz"), sheet, dice)
 
 
 def render():
@@ -86,35 +87,39 @@ while running:
                     final_scores = None
 
                     ai.reset()
+                    ai2.reset()
 
                 continue
 
-            if state.current_player != 0:
-                continue
+            # if state.current_player != 0:
+            #     continue
+            #
+            # if roll_dice_button.clicked(mouse_pos) and not dice.in_animation():
+            #     try:
+            #         state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
+            #         dice.throw(state.dice)
+            #         sheet.update_score(state, after_roll=True)
+            #     except ValueError as _:
+            #         pass
+            #
+            # dice.click(mouse_pos)
+            #
+            # sheet_cell = sheet.clicked(mouse_pos)
+            # if sheet_cell:
+            #     category, player = sheet_cell
+            #
+            #     try:
+            #         state = state.apply_category(category, player)
+            #         dice.reset()
+            #         sheet.update_score(state)
+            #     except ValueError as _:
+            #         pass
 
-            if roll_dice_button.clicked(mouse_pos) and not dice.in_animation():
-                try:
-                    state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
-                    dice.throw(state.dice)
-                    sheet.update_score(state, after_roll=True)
-                except ValueError as _:
-                    pass
-
-            dice.click(mouse_pos)
-
-            sheet_cell = sheet.clicked(mouse_pos)
-            if sheet_cell:
-                category, player = sheet_cell
-
-                try:
-                    state = state.apply_category(category, player)
-                    dice.reset()
-                    sheet.update_score(state)
-                except ValueError as _:
-                    pass
-
-    if not state.is_final() and state.current_player != 0 and not dice.in_animation():
+    if not state.is_final() and state.current_player == 0 and not dice.in_animation():
         state = ai.play(dt, state)
+
+    if not state.is_final() and state.current_player == 1 and not dice.in_animation():
+        state = ai2.play(dt, state)
 
     if state.is_final():
         final_scores = (
