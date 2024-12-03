@@ -143,7 +143,7 @@ class PlayerState:
         self.scores = [ScoreCategory.UNSELECTED.value] * CATEGORY_COUNT
 
     def total_score(self):
-        return sum(self.scores)
+        return sum(self.scores) + 35 if sum(self.scores[:6]) >= 63 else 0
 
     def __repr__(self) -> str:
         return f"Player state: {self.scores}"
