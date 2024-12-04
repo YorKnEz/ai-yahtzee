@@ -39,7 +39,6 @@ class AI:
 
     def __init__(self):
         self.unpicked_dice = AI.REROLL_TRANSITIONS[30]
-        self.selected_category = -1
         pass
 
     def wants_reroll(self, state: GameState) -> bool:

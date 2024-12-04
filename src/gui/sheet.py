@@ -1,8 +1,6 @@
-from itertools import zip_longest
-
 import pygame
 
-from constants import STATIC_SCORES, ScoreCategory, CATEGORY_COUNT
+from constants import CATEGORY_COUNT, ScoreCategory
 from state import GameState
 from utils import score_roll
 
@@ -69,11 +67,11 @@ class Sheet:
         self.bounds.height -= border_padding
 
         # from now on, bounds represents the box without the borders, math is easier this way
+
         self.text = [font.render(label, True, "black") for label in (Sheet.row_labels + Sheet.col_labels)]
         self.text_rect: list[pygame.Rect] = []
 
-        # bounds.center = (self.bounds.center[0], self.bounds.y + self.bounds.height // 2)
-
+        # define clickable area
         self.cells_bounds = self.bounds.copy()
         self.cells_bounds.x += cell_width
         self.cells_bounds.y += cell_height
@@ -137,7 +135,7 @@ class Sheet:
         self.bounds.width += 4 * border_padding
         self.bounds.height += 4 * border_padding
 
-    def __score_for_player(
+    def __update_score_for_player(
         self,
         column_index: int,
         player_scores: list[int],
@@ -145,23 +143,46 @@ class Sheet:
     ):
         is_0_only_obtainable_score = all(
             obtained_score == 0
-            for i, (obtained_score, player_score) in enumerate(zip_longest(obtained_scores, player_scores))
-            if player_score == ScoreCategory.UNSELECTED.value and i not in STATIC_SCORES
+            for obtained_score, player_score in zip(obtained_scores, player_scores)
+            if player_score == ScoreCategory.UNSELECTED.value
         )
 
-        for i, (existing_score, possible_score) in enumerate(zip_longest(player_scores, obtained_scores, fillvalue=0)):
+        are_first_6_rows_completed = all(score != ScoreCategory.UNSELECTED.value for score in player_scores[:6])
+
+        # compute scores for sum and bonus
+        if are_first_6_rows_completed:
+            sum_first_6_rows = sum(score for score in player_scores[:6] if score != ScoreCategory.UNSELECTED.value)
+            bonus_first_6_rows = 35 * (sum_first_6_rows >= 63)
+        else:
+            sum_first_6_rows = -1
+            bonus_first_6_rows = -1
+
+        player_scores = player_scores[:6] + [sum_first_6_rows, bonus_first_6_rows] + player_scores[6:]
+        obtained_scores = obtained_scores[:6] + [0, 0] + obtained_scores[6:]
+
+        # update the text elements of the sheet
+        for i, (existing_score, possible_score) in enumerate(zip(player_scores, obtained_scores)):
+            # black is used for picked fields, red for pickable fields
             color = "black"
-            display_number = existing_score
-            if display_number == ScoreCategory.UNSELECTED.value:
-                display_number = possible_score
+
+            if i == 6 or i == 7:
+                # for sum and bonus always render using existing score or display nothing
+                display_number = str(existing_score) if existing_score != ScoreCategory.UNSELECTED.value else ""
+            elif existing_score != ScoreCategory.UNSELECTED.value:
+                # unselected fields should be rendered if the existing_score exists (damn)
+                display_number = str(existing_score)
+            elif possible_score == -1:
+                # ignore values of -1
+                # -1 is a marker that esentially says that we are rendering the scores for the other player
+                # so no red text should be shown on its column
+                display_number = ""
+            else:
+                # if existing_score is missing, render in red the possible value that can be obtained or nothing
                 color = "red"
+                # render possible_score in only if it is non zero or if it is zero and zero is the only possible value
+                display_number = str(possible_score) if possible_score > 0 or (possible_score == 0 and is_0_only_obtainable_score) else ""
 
-                if (not is_0_only_obtainable_score or i in STATIC_SCORES) and display_number == 0:
-                    display_number = None
-
-            self.score_text.append(
-                self.font.render(str(display_number) if display_number is not None else "", True, color)
-            )
+            self.score_text.append(self.font.render(display_number, True, color))
             rect = self.score_text[i].get_rect()
             rect.x = self.cells_bounds.x + self.cell_width * column_index + 8
             rect.center = (
@@ -170,18 +191,15 @@ class Sheet:
             )
             self.score_text_rect.append(rect)
 
-        total_score = str(sum(
-            score for i, score in enumerate(player_scores) if score != ScoreCategory.UNSELECTED.value
-            and i not in STATIC_SCORES
-        ))
-        self.score_text.append(
-            self.font.render(total_score, True, "black")
-        )
+        # update total
+        total_score = str(sum(score for score in player_scores[:6] + player_scores[7:] if score != ScoreCategory.UNSELECTED.value))
+
+        self.score_text.append(self.font.render(total_score, True, "black"))
         rect = self.score_text[-1].get_rect()
         rect.x = self.cells_bounds.x + self.cell_width * column_index + 8
         rect.center = (
             rect.center[0],
-            self.cells_bounds.y + CATEGORY_COUNT * self.cell_height + self.cell_height // 2,
+            self.cells_bounds.y + (len(self.row_labels) - 1) * self.cell_height + self.cell_height // 2,
         )
         self.score_text_rect.append(rect)
 
@@ -196,12 +214,12 @@ class Sheet:
         self.score_text.clear()
         self.score_text_rect.clear()
 
-        obtained_scores = score_roll(state.dice) if after_roll else []
+        obtained_scores = score_roll(state.dice) if after_roll else [-1] * CATEGORY_COUNT
         for player_index, player_state in enumerate(state.player_states):
-            self.__score_for_player(
+            self.__update_score_for_player(
                 player_index,
                 player_state.scores,
-                obtained_scores if player_index == state.current_player else [],
+                obtained_scores if player_index == state.current_player else [-1] * CATEGORY_COUNT,
             )
 
     def draw(self, screen):
@@ -230,5 +248,5 @@ class Sheet:
             row = (y - self.cells_bounds.y) // self.cell_height
             col = (x - self.cells_bounds.x) // self.cell_width
             if Sheet.row_clickable[row]:
-                return row, col
+                return row - 2 if row > 7 else row, col
         return None

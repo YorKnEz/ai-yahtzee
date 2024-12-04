@@ -11,18 +11,13 @@ class ScoreCategory(Enum):
     FOURS = 3
     FIVES = 4
     SIXES = 5
-    SUM = 6
-    BONUS = 7
-    THREE_OF_A_KIND = 8
-    FOUR_OF_A_KIND = 9
-    FULL_HOUSE = 10
-    SMALL_STRAIGHT = 11
-    LARGE_STRAIGHT = 12
-    CHANCE = 13
-    YAHTZEE = 14
+    THREE_OF_A_KIND = 6
+    FOUR_OF_A_KIND = 7
+    FULL_HOUSE = 8
+    SMALL_STRAIGHT = 9
+    LARGE_STRAIGHT = 10
+    CHANCE = 11
+    YAHTZEE = 12
 
 
 CATEGORY_COUNT = len(list(ScoreCategory)) - 1
-
-# static scores as in un-updatable by the user
-STATIC_SCORES = [ScoreCategory.SUM.value, ScoreCategory.BONUS.value]

@@ -1,2 +1,3 @@
 from .ai import AI
-from .random import RandomAI
+from .q import QAI
+from .random_ai import RandomAI

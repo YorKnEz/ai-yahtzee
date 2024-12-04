@@ -1,13 +1,12 @@
-from typing import Tuple
-
 import pygame
 
-from ai import RandomAI
+from ai import QAI, RandomAI
 from constants import FPS
 from gui import AIPlayer, Button, Dice, Sheet
 from state import GameState
 
 pygame.init()
+pygame.display.set_caption("Yahtzee")
 
 size = width, height = 1280, 720
 screen = pygame.display.set_mode(size)
@@ -27,10 +26,7 @@ state = GameState()
 dice = Dice(game_bounds, state.dice)
 
 roll_dice_button_bounds = pygame.Rect(0, dice.dice[1].bounds.top - 64 - 16, 200, 64)
-roll_dice_button_bounds.center = (
-    game_bounds.center[0],
-    roll_dice_button_bounds.center[1],
-)
+roll_dice_button_bounds.center = (game_bounds.center[0], roll_dice_button_bounds.center[1])
 roll_dice_button = Button(roll_dice_button_bounds, "Roll dice", font)
 
 replay_button_bounds = pygame.Rect((width - 300) // 2 + 50, (height - 200) // 2 + 120, 200, 50)
@@ -38,9 +34,10 @@ replay_button_bounds.center = game_bounds.center[0], replay_button_bounds.center
 replay_button = Button(replay_button_bounds, "Replay", font)
 
 sheet = Sheet(sheet_bounds, font)
-final_scores: Tuple[int, int] | None = None
+final_scores: tuple[int, int] | None = None
 
-ai: AIPlayer = AIPlayer(RandomAI(), sheet, dice)
+ai: AIPlayer = AIPlayer(QAI("7"), sheet, dice)
+ai2: AIPlayer = AIPlayer(QAI("bomberman"), sheet, dice)
 
 
 def render():
@@ -82,43 +79,50 @@ while running:
             if state.is_final():
                 if replay_button.clicked(mouse_pos):
                     state = GameState()
-                    dice = Dice(game_bounds, state.dice)
+                    dice.reset()
                     sheet.update_score(state)
                     final_scores = None
 
                     ai.reset()
+                    ai2.reset()
 
                 continue
 
-            if state.current_player != 0:
-                continue
+            # if state.current_player != 0:
+            #     continue
+            #
+            # if roll_dice_button.clicked(mouse_pos) and not dice.in_animation():
+            #     try:
+            #         state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
+            #         dice.throw(state.dice)
+            #         sheet.update_score(state, after_roll=True)
+            #     except ValueError as _:
+            #         pass
+            #
+            # dice.click(mouse_pos)
+            #
+            # sheet_cell = sheet.clicked(mouse_pos)
+            # if sheet_cell:
+            #     category, player = sheet_cell
+            #
+            #     try:
+            #         state = state.apply_category(category, player)
+            #         dice.reset()
+            #         sheet.update_score(state)
+            #     except ValueError as _:
+            #         pass
 
-            if roll_dice_button.clicked(mouse_pos) and not dice.in_animation():
-                try:
-                    state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
-                    dice.throw(state.dice)
-                    sheet.update_score(state, after_roll=True)
-                except ValueError as _:
-                    pass
-
-            dice.click(mouse_pos)
-
-            sheet_cell = sheet.clicked(mouse_pos)
-            if sheet_cell:
-                category, player = sheet_cell
-
-                try:
-                    state = state.apply_category(category, player)
-                    dice.reset()
-                    sheet.update_score(state)
-                except ValueError as _:
-                    pass
-
-    if not state.is_final() and state.current_player != 0 and not dice.in_animation():
+    if not state.is_final() and state.current_player == 0 and not dice.in_animation():
         state = ai.play(dt, state)
 
+    if not state.is_final() and state.current_player == 1 and not dice.in_animation():
+        state = ai2.play(dt, state)
+
     if state.is_final():
-        final_scores = state.player_states[0].total_score(), state.player_states[1].total_score()
+        final_scores = (
+            state.player_states[0].total_score(),
+            state.player_states[1].total_score(),
+        )
 
     render()
 
