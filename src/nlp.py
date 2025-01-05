@@ -109,13 +109,7 @@ def lesk(sentence, word, pos=None, wn=rown):
     return sense
 
 
-tagged_words = nlp(
-    """
-Sunt recunoscător și onorat de încrederea pe care cetățenii României mi-au acordat-o, aceea de a fi Președintele lor. Și îi asigur că voi fi Președintele tuturor românilor. Sunt profund mișcat de dragostea de țară care a stat în spatele participării la vot, de aspirația spre libertate și prosperitate a românilor. 
-Vă mulțumesc vouă, tuturor concetățenilor mei, pentru că ați arătat lumii întregi adevărata față a României. La 25 de ani după căderea comunismului ați făcut încă o dată să triumfe democrația și participarea. 
-Se vorbește foarte mult în aceste zile despre așteptări. Despre speranțele pe care românii și le pun în viitor, despre semnalul dat de votul din 16 noiembrie. Și după valul de entuziasm o îndoială din trecut pare a-și face loc încet pentru unii. Dar dacă așteptările mari duc la dezamăgiri? Eu vreau să dărâmăm și această îndoială, așa cum am dărâmat și altele. Și le spun românilor clar: așteptările mari pot duce la rezultate mari. Și vor duce. Pentru că așteptări mari înseamnă mai multă responsabilitate, mai mult efort, mai multă seriozitate și mai multă muncă. Din partea tuturor. Iar eu voi fi primul. Momentul în care clasa politică începe să se ridice la înălțimea așteptărilor nu poate întârzia mult. Și nu frica de dezamăgire trebuie să miște oamenii politici, ci faptul că România se schimbă. Că o națiune de cetățeni cu aspirații, idealuri și valori nu va mai accepta să fie reprezentată decât de o clasă politică pe măsură.
-"""
-)
+tagged_words = nlp(text)
 replaced_words: list[str] = []
 
 
@@ -126,7 +120,6 @@ def append_word_with_space(arr, word, pos=None):
 
 
 for index, token in enumerate(tagged_words):
-    # print((token.text, token.pos_, token.lemma_))
     synsets = rown.synsets(token.lemma_, pos=str_to_synset_pos(token.pos_), strict=True)
     if not synsets:
         append_word_with_space(replaced_words, token.text, token.pos_)
