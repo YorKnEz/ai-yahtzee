@@ -116,28 +116,46 @@ Vă mulțumesc vouă, tuturor concetățenilor mei, pentru că ați arătat lumi
 Se vorbește foarte mult în aceste zile despre așteptări. Despre speranțele pe care românii și le pun în viitor, despre semnalul dat de votul din 16 noiembrie. Și după valul de entuziasm o îndoială din trecut pare a-și face loc încet pentru unii. Dar dacă așteptările mari duc la dezamăgiri? Eu vreau să dărâmăm și această îndoială, așa cum am dărâmat și altele. Și le spun românilor clar: așteptările mari pot duce la rezultate mari. Și vor duce. Pentru că așteptări mari înseamnă mai multă responsabilitate, mai mult efort, mai multă seriozitate și mai multă muncă. Din partea tuturor. Iar eu voi fi primul. Momentul în care clasa politică începe să se ridice la înălțimea așteptărilor nu poate întârzia mult. Și nu frica de dezamăgire trebuie să miște oamenii politici, ci faptul că România se schimbă. Că o națiune de cetățeni cu aspirații, idealuri și valori nu va mai accepta să fie reprezentată decât de o clasă politică pe măsură.
 """
 )
-result: list[str] = []
+replaced_words: list[str] = []
+
+
+def append_word_with_space(arr, word, pos=None):
+    if pos != "PUNCT" and len(arr) > 0 and word[0] != "-" and arr[-1][-1] != "-":
+        replaced_words.append(" ")
+    replaced_words.append(word)
+
 
 for index, token in enumerate(tagged_words):
     # print((token.text, token.pos_, token.lemma_))
     synsets = rown.synsets(token.lemma_, pos=str_to_synset_pos(token.pos_), strict=True)
-    if not synsets or random.randint(0, 4) != 0:
-        final_word = token.text
-    else:
-        # TODO: for all synsets, get the inbound connections;
-        # get the hypernyms and the antonyms through that; add them all to lists
-        # for synonyms, just get the lemmas of all synsets
-        # add all words to a single list and literally choose one that is different
-        # from the given word
+    if not synsets:
+        append_word_with_space(replaced_words, token.text, token.pos_)
+        continue
 
-        # for testing, i'll just choose one synonym, even if it is itself
-        possible_words = [literal for ss in synsets for literal in rown.synset(ss).literals]  # only synonyms
-        final_word = possible_words[
-            random.randint(0, len(possible_words) - 1) if len(possible_words) > 1 else 0
-        ].replace("_", " ")
+    synonyms = [
+        literal for ss in synsets for literal in rown.synset(ss).literals if literal.strip() != token.text.strip()
+    ]
 
-    if token.pos_ != "PUNCT" and len(result) > 0 and final_word[0] != "-":
-        result.append(" ")
-    result.append(final_word)
+    outbound_relations = [x for ss in synsets for x in rown.outbound_relations(ss)]
+    hypernym_synsets = [ss for ss, relation in outbound_relations if relation == "hypernym"]
+    antonym_synsets = [ss for ss, relation in outbound_relations if relation in {"antonym", "near_antonym"}]
+    hypernyms = [literal for ss in hypernym_synsets for literal in rown.synset(ss).literals]
+    not_antonyms = ["nu " + literal for ss in antonym_synsets for literal in rown.synset(ss).literals]
 
-print("".join(result))
+    possible_words = [*synonyms, *hypernyms, *not_antonyms]
+    if not possible_words or random.randint(0, 4) != 0:
+        append_word_with_space(replaced_words, token.text, token.pos_)
+        continue
+
+    final_word = (
+        possible_words[random.randint(0, len(possible_words) - 1) if len(possible_words) > 1 else 0]
+        .replace("_", " ")
+        .replace("[", "")
+        .replace("]", "")
+        .replace("|", "")
+    )
+    append_word_with_space(replaced_words, final_word, token.pos_)
+
+
+replaced_words_result = "".join(replaced_words)
+print(replaced_words_result)
