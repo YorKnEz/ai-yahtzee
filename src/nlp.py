@@ -4,7 +4,7 @@ import string
 import nltk
 import pycountry
 
-# pip install setuptools
+# pip install setuptools rowordnet nltk
 import rowordnet
 from rowordnet import Synset
 import random
@@ -12,12 +12,12 @@ from langdetect import detect
 from nltk.probability import FreqDist
 from nltk.tokenize import sent_tokenize, word_tokenize
 
-# pip install stanza spacy-stanza
-import stanza
-import spacy_stanza
+# pip install spacy
+import spacy
+from spacy.cli import download
 
-stanza.download("ro")
-nlp = spacy_stanza.load_pipeline("ro", processors="tokenize,pos,lemma")
+download("ro_core_news_sm")
+nlp = spacy.load("ro_core_news_sm")
 rown = rowordnet.RoWordNet()
 
 nltk.download("punkt_tab")
@@ -34,7 +34,11 @@ if len(sys.argv) < 2:
 else:
     text = sys.argv[1]
 
+text = text.strip()
+
 nlp.max_length = len(text)
+
+print("\n\n\nStylometric characteristics:\n")
 
 # detect lang
 lang = detect(text)
@@ -94,14 +98,9 @@ def str_to_synset_pos(pos_str: str):
 
 # Lesk algorithm, used to find the word meaning in WordNet
 # most similar to the sentence/paragraph given;
-# might come in handy for determining the "sense" of keywords in sentences.
-# normally Lesk is used on a single sentence but I feel like it might be more
-# helpful to use it on a whole paragraph;
-# we sort words in the paragraph by their frequency,
-# we lesk the first few,
-# and that's how we get their meanings -- through their wordnet definitions.
-def lesk(sentence, word, pos=None, wn=rown):
-    context = set(x for x in sentence.split() if x != "")
+# used for determining the "sense" of keywords in sentences
+def lesk(sentence: list[str], word: str, pos=None, wn=rown):
+    context = set(x for x in sentence if x != "")
     synsets = wn.synsets(word, pos=pos if pos else None)
     if not synsets:
         return None
@@ -109,7 +108,7 @@ def lesk(sentence, word, pos=None, wn=rown):
     return sense
 
 
-tagged_words = nlp(text)
+doc = nlp(text)
 replaced_words: list[str] = []
 
 
@@ -119,7 +118,7 @@ def append_word_with_space(arr, word, pos=None):
     replaced_words.append(word)
 
 
-for index, token in enumerate(tagged_words):
+for token in doc:
     synsets = rown.synsets(token.lemma_, pos=str_to_synset_pos(token.pos_), strict=True)
     if not synsets:
         append_word_with_space(replaced_words, token.text, token.pos_)
@@ -151,4 +150,22 @@ for index, token in enumerate(tagged_words):
 
 
 replaced_words_result = "".join(replaced_words)
+print("\n\n\nText with words replaced:\n")
 print(replaced_words_result)
+
+# get the first paragraph
+paragraph = text.split("\n")[0]
+paragraph_doc = nlp(paragraph)
+named_entities = paragraph_doc.ents
+paragraph_words = [x.text for x in paragraph_doc]
+
+keyword_meanings = {}
+
+for keyword in named_entities:
+    synset = lesk(paragraph_words, keyword.lemma_)
+    if synset:
+        keyword_meanings[keyword.text] = rown.synset(synset).definition
+
+
+print("\n\n\nKeywords in first paragraph (and their meaning):\n")
+print(keyword_meanings)
