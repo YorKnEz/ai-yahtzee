@@ -1,10 +1,10 @@
 import sys
 import string
+import re
 
 import nltk
 import pycountry
 
-# pip install setuptools rowordnet nltk
 import rowordnet
 from rowordnet import Synset
 import random
@@ -12,15 +12,24 @@ from langdetect import detect
 from nltk.probability import FreqDist
 from nltk.tokenize import sent_tokenize, word_tokenize
 
-# pip install spacy
 import spacy
 from spacy.cli import download
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
+# initialize models
 download("ro_core_news_sm")
 nlp = spacy.load("ro_core_news_sm")
 rown = rowordnet.RoWordNet()
-
 nltk.download("punkt_tab")
+
+tokenizer = AutoTokenizer.from_pretrained("dumitrescustefan/gpt-neo-romanian-780m")
+model = AutoModelForCausalLM.from_pretrained("dumitrescustefan/gpt-neo-romanian-780m")
+model.generation_config.pad_token_id = model.generation_config.eos_token_id
+
+seed = random.randint(0, 2**32 - 1)
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
 
 
 def is_word(word: str):
@@ -29,11 +38,9 @@ def is_word(word: str):
 
 # extract text
 if len(sys.argv) < 2:
-    # example data, any english text will do
     text = open("assets/nlp/Klaus Iohannis_texts.txt", encoding="utf8").read()
 else:
     text = sys.argv[1]
-
 text = text.strip()
 
 nlp.max_length = len(text)
@@ -51,35 +58,33 @@ words = word_tokenize(text)
 words_without_punctuation = [word for word in words if is_word(word)]
 sentences = sent_tokenize(text)
 
-# 1. Lexical Features
-
-# Vocabulary richness: Metrics like type-token ratio (TTR), which is the ratio of unique words (types) to total words (tokens).
+# lexical features
+# type-token ratio (TTR) = unique words / total words.
 ttr = len(set(words_without_punctuation)) / len(words_without_punctuation)
 print(f"{ttr=}")
 
-# Word frequencies: Commonly used words or distinctive patterns in word usage.
+# most common words
 freq_dist = FreqDist(words_without_punctuation)
 print(f"top 5 most common words: {freq_dist.most_common(5)}")
 
-# Word length: Average word length or distribution of word lengths.
+# avg word length
 avg_word_length = sum(len(word) for word in words_without_punctuation) / len(words_without_punctuation)
 print(f"{avg_word_length=}")
 
-# Hapax legomena: Count of words that occur only once in the text.
+# hapax legomena: count of words that occur only once in the text.
 hapax_legomena = [word for word, count in freq_dist.items() if count == 1]
 print(f"hapax_legomena={hapax_legomena[:5]}")
 
-# Hapax dislegomena: Count of words that occur exactly twice.
+# hapax dislegomena: count of words that occur exactly twice.
 hapax_dislegomena = [word for word, count in freq_dist.items() if count == 2]
 print(f"hapax_dislegomena={hapax_dislegomena[:5]}")
 
-# 2. Syntactic Features
-
-# Sentence length: Average sentence length and variability.
+# syntactic features
+# avg sentence length
 avg_sentence_length = sum(len(word_tokenize(sent)) for sent in sentences) / len(sentences)
 print(f"{avg_sentence_length=}")
 
-# Punctuation usage: Frequency and types of punctuation marks.
+# count of punctuations
 punctuation_count = sum(1 for char in text if char in string.punctuation)
 print(f"{punctuation_count=}")
 
@@ -159,13 +164,30 @@ paragraph_doc = nlp(paragraph)
 named_entities = paragraph_doc.ents
 paragraph_words = [x.text for x in paragraph_doc]
 
-keyword_meanings = {}
+keywords_with_meanings = {}
 
-for keyword in named_entities:
-    synset = lesk(paragraph_words, keyword.lemma_)
-    if synset:
-        keyword_meanings[keyword.text] = rown.synset(synset).definition
+for entity in named_entities:
+    synset = lesk(paragraph_words, entity.lemma_)
+    keywords_with_meanings[entity.text] = rown.synset(synset).definition if synset else None
 
+print(f"\n\n\nKeywords in first paragraph: {', '.join(keywords_with_meanings.keys())}")
 
-print("\n\n\nKeywords in first paragraph (and their meaning):\n")
-print(keyword_meanings)
+# generate sentences
+for keyword, meaning in keywords_with_meanings.items():
+    prompt = f'O propoziție conținând cuvântul "{keyword}"'
+    if meaning is not None:
+        prompt += f', cuvânt care are definiția "{meaning}"'
+    prompt += ", este:"
+    inputs = tokenizer.encode(prompt, return_tensors="pt")
+    text = model.generate(inputs, max_new_tokens=256, no_repeat_ngram_size=2)
+
+    print(f'\n\nSentence with keyword "{keyword}":')
+    generated_text = tokenizer.decode(text[0])[len(prompt) :].strip()
+    sentence_match = re.match(r'(\"([^"]+)\")|([^.?!]*[.?!])', generated_text)
+    if sentence_match:
+        sentence = sentence_match.group(0).strip('"')
+        if sentence[-1] not in {".", "?", "!"}:
+            sentence += "."
+        print(sentence)
+    else:
+        print(generated_text)
