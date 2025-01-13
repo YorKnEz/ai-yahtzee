@@ -1,9 +1,10 @@
 import pygame
 
-from ai import QAI, RandomAI
+from ai import QAI
 from constants import FPS
 from gui import AIPlayer, Button, Dice, Sheet
-from gui.textbox import Textbox
+from gui.dialogue.chat import Chat
+from gui.dialogue.textbox import Textbox
 from state import GameState
 
 pygame.init()
@@ -42,7 +43,7 @@ final_scores: tuple[int, int] | None = None
 ai: AIPlayer = AIPlayer(QAI("7"), sheet, dice)
 ai2: AIPlayer = AIPlayer(QAI("bomberman"), sheet, dice)
 
-textbox = Textbox(pygame.Rect(100, 100, 100, 100), dialogues_font)
+textbox = Chat(pygame.Rect(100, 100, 200, 400), 200, dialogues_font)
 
 
 def render():

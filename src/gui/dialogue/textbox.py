@@ -2,6 +2,8 @@ from functools import partial
 
 import pygame
 
+from gui.dialogue import utils
+
 
 class Textbox:
 
@@ -25,9 +27,9 @@ class Textbox:
         self.font = font
         self.text = text
         self.lines = []
+        self.text_surfaces = []
         self.is_line_word_continuation = []
         self.line_pos_to_text_pos = []
-        self.__wrap_text_and_set_pos()
         self.text_color = text_color
         self.empty_text_lines = self.__wrap_text(empty_text)[0]
         self.empty_text_color = empty_text_color
@@ -38,8 +40,13 @@ class Textbox:
         self.cursor_index = (0, 0)
         self.cursor_update_counter = 0
         self.is_cursor_visible = False
+        self.locked = False
+        self.__wrap_text_and_set_pos()
 
     def handle_event(self, event: pygame.event.Event) -> str | None:
+        if self.locked:
+            return
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.rect.collidepoint(event.pos):
                 self.active = True
@@ -51,9 +58,12 @@ class Textbox:
             match event.key:
                 case pygame.K_ESCAPE:
                     self.active = False
-                case pygame.K_KP_ENTER:
+                case pygame.K_RETURN:
                     txt = self.text
                     self.text = ""
+                    self.cursor_index = (0, 0)
+                    self.cursor_update_counter = 0
+                    self.is_cursor_visible = True
                     self.__wrap_text_and_set_pos()
                     return txt
                 case pygame.K_DOWN:
@@ -106,47 +116,7 @@ class Textbox:
             self.cursor_index = (self.cursor_index[0] - 1, len(self.lines[self.cursor_index[0] - 1]) - 1)
 
     def __wrap_text(self, text) -> tuple[list[str], list[bool]]:
-        max_text_width = self.rect.width - 10 + self.font.size(" ")[0]
-        separated_text = []
-        word_index = 0
-        for word in text.split(" "):
-            if self.font.size(word + " ")[0] <= max_text_width:
-                separated_text.append((word, word_index))
-            else:
-                current_word = ""
-                for ch in word:
-                    test_word = current_word + ch
-                    if self.font.size(test_word + " ")[0] <= max_text_width:
-                        current_word = test_word
-                    else:
-                        separated_text.append((current_word, word_index))
-                        current_word = ch
-                if current_word != "":
-                    separated_text.append((current_word, word_index))
-            word_index += 1
-
-        lines = []
-        is_line_word_continuation = []
-        current_line = ""
-        for i, (word, word_index) in enumerate(separated_text):
-            test_line = f"{current_line}{word} "
-            if self.font.size(test_line)[0] <= max_text_width:
-                current_line = test_line
-            else:
-                lines.append(current_line)
-                if len(lines) >= 1 and separated_text[i - 1][1] == word_index:
-                    is_line_word_continuation.append(True)
-                else:
-                    is_line_word_continuation.append(False)
-                current_line = f"{word} "
-        if current_line != "":
-            lines.append(current_line)
-            if len(lines) >= 1 and separated_text[-1][1] == word_index:
-                is_line_word_continuation.append(True)
-            else:
-                is_line_word_continuation.append(False)
-
-        return lines, is_line_word_continuation
+        return utils.wrap_text(text, self.font, self.rect.width - 10)
 
     def __set_line_pos_to_text_pos(self):
         self.line_pos_to_text_pos.clear()
@@ -157,6 +127,7 @@ class Textbox:
 
     def __wrap_text_and_set_pos(self):
         self.lines, self.is_line_word_continuation = self.__wrap_text(self.text)
+        self.text_surfaces = self.__render_lines(self.lines)
         self.__set_line_pos_to_text_pos()
 
     def __handle_editing_event(self, event: pygame.event.Event):
@@ -174,6 +145,14 @@ class Textbox:
         if move_cursor:
             move_cursor()
 
+    def __render_lines(self, lines):
+        return [self.font.render(line, True, self.text_color) for line in lines]
+
+    def activate(self):
+        self.active = True
+        self.cursor_update_counter = 0
+        self.is_cursor_visible = True
+
     def update(self, dt):
         if self.active:
             self.cursor_update_counter += dt * 1000
@@ -187,8 +166,7 @@ class Textbox:
 
         y_offset = self.rect.y + 5
 
-        for i, line in enumerate(self.lines):
-            text_surface = self.font.render(line, True, self.text_color)
+        for i, (line, text_surface) in enumerate(zip(self.lines, self.text_surfaces)):
             screen.blit(text_surface, (self.rect.x + 5, y_offset))
 
             if self.active and self.is_cursor_visible and i == self.cursor_index[0]:
@@ -198,3 +176,9 @@ class Textbox:
                 pygame.draw.line(screen, self.text_color, (cursor_x, cursor_y), (cursor_x, cursor_y + cursor_height), 2)
 
             y_offset += text_surface.get_height() + Textbox.LINE_SPACING
+
+    def lock(self):
+        self.locked = True
+
+    def unlock(self):
+        self.locked = False
