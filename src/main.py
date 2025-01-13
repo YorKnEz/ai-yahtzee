@@ -3,10 +3,12 @@ import pygame
 from ai import QAI, RandomAI
 from constants import FPS
 from gui import AIPlayer, Button, Dice, Sheet
+from gui.textbox import Textbox
 from state import GameState
 
 pygame.init()
 pygame.display.set_caption("Yahtzee")
+pygame.key.set_repeat(500, 40)
 
 size = width, height = 1280, 720
 screen = pygame.display.set_mode(size)
@@ -21,6 +23,7 @@ running = True
 dt = 0
 
 font = pygame.font.Font("assets/ldfcomicsans.ttf", 16)
+dialogues_font = pygame.font.Font("assets/ComicMono.ttf", 16)
 
 state = GameState()
 dice = Dice(game_bounds, state.dice)
@@ -39,9 +42,12 @@ final_scores: tuple[int, int] | None = None
 ai: AIPlayer = AIPlayer(QAI("7"), sheet, dice)
 ai2: AIPlayer = AIPlayer(QAI("bomberman"), sheet, dice)
 
+textbox = Textbox(pygame.Rect(100, 100, 100, 100), dialogues_font)
+
 
 def render():
     dice.update(dt)
+    textbox.update(dt)
     screen.fill("purple")
 
     pygame.draw.rect(screen, "blue", game_bounds)
@@ -66,11 +72,13 @@ def render():
         screen.blit(ai_score_text, (rect_x + rect_width // 2 - 50, rect_y + 60))
         replay_button.draw(screen)
 
+    textbox.draw(screen)
     pygame.display.flip()
 
 
 while running:
     for event in pygame.event.get():
+        textbox.handle_event(event)
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -112,17 +120,17 @@ while running:
             #     except ValueError as _:
             #         pass
 
-    if not state.is_final() and state.current_player == 0 and not dice.in_animation():
-        state = ai.play(dt, state)
-
-    if not state.is_final() and state.current_player == 1 and not dice.in_animation():
-        state = ai2.play(dt, state)
-
-    if state.is_final():
-        final_scores = (
-            state.player_states[0].total_score(),
-            state.player_states[1].total_score(),
-        )
+    # if not state.is_final() and state.current_player == 0 and not dice.in_animation():
+    #     state = ai.play(dt, state)
+    #
+    # if not state.is_final() and state.current_player == 1 and not dice.in_animation():
+    #     state = ai2.play(dt, state)
+    #
+    # if state.is_final():
+    #     final_scores = (
+    #         state.player_states[0].total_score(),
+    #         state.player_states[1].total_score(),
+    #     )
 
     render()
 
