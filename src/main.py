@@ -1,10 +1,15 @@
+import os
+import struct
+
+import matplotlib.colors
 import pygame
+from matplotlib import pyplot as plt
 
 from ai import QAI
-from constants import FPS
+from constants import FPS, ScoreCategory
 from gui import AIPlayer, Button, Dice, Sheet
 from gui.dialogue import Chat
-from state import GameState
+from state import GameState, PlayerState
 
 pygame.init()
 pygame.display.set_caption("Yahtzee")
@@ -36,6 +41,11 @@ replay_button_bounds = pygame.Rect((width - 300) // 2 + 50, (height - 200) // 2 
 replay_button_bounds.center = game_bounds.center[0], replay_button_bounds.center[1]
 replay_button = Button(replay_button_bounds, "Replay", font)
 
+statistics_button_bounds = pygame.Rect(0, 0, 100, 50)
+statistics_button_bounds.center = (game_bounds.bottomright[0] - 60, game_bounds.bottomright[1] - 30)
+statistics_button = Button(statistics_button_bounds, "Statistics", font)
+statistics_file = "yahtzee-stats.bin"
+
 sheet = Sheet(sheet_bounds, font)
 final_scores: tuple[int, int] | None = None
 
@@ -43,6 +53,62 @@ ai: AIPlayer = AIPlayer(QAI("7"), sheet, dice)
 ai2: AIPlayer = AIPlayer(QAI("bomberman"), sheet, dice)
 
 textbox = Chat(pygame.Rect(1280, 0, 320, 720), 200, dialogues_font)
+
+
+def show_statistics():
+    if not os.path.isfile(statistics_file):
+        return None
+    if not os.access(statistics_file, os.R_OK):
+        return None
+    struct_size = struct.calcsize("14i")
+    with open(statistics_file, "rb") as file:
+        fdata = file.read()
+        player_states = [
+            PlayerState.from_array(list(struct.unpack("14i", fdata[i:i + struct_size])))
+            for i in range(0, len(fdata), struct_size)
+        ]
+
+    total_scores = [player_state.total_score() for player_state in player_states]
+    category_scores = list(zip(*[player_state.scores for player_state in player_states]))
+    rerolls = [player_state.rerolls for player_state in player_states]
+    games = range(1, len(player_states) + 1)
+
+    # Create the figure and subplots
+    fig, ax = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+
+    # Plot total score evolution
+    ax[0].plot(games, total_scores, marker='o', label="Total Score", color="blue")
+    ax[0].set_title("Total Score Evolution")
+    ax[0].set_ylabel("Total Score")
+    ax[0].legend()
+    ax[0].grid(True)
+
+    # Plot category score evolution
+    cmap = matplotlib.colormaps["tab20"]
+    colors = [cmap(i / len(category_scores)) for i in range(len(category_scores))]
+    for category_data, category_type, color in zip(category_scores, list(ScoreCategory)[1:], colors):
+        ax[1].plot(
+            games, category_data, marker='o', label=category_type.name.capitalize().replace("_", " "), color=color
+        )
+    ax[1].set_title("Category Score Evolution")
+    ax[1].set_ylabel("Score per Category")
+    ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1))
+    ax[1].grid(True)
+
+    # Plot reroll evolution
+    ax[2].plot(games, rerolls, marker='o', label="Rerolls Used", color="red")
+    ax[2].set_title("Reroll Evolution")
+    ax[2].set_xlabel("Game Number")
+    ax[2].set_ylabel("Rerolls Used")
+    ax[2].set_xticks(games)
+    # ax[2].xaxis.get_major_locator().set_params(integer=True)
+    ax[2].yaxis.get_major_locator().set_params(integer=True)
+    ax[2].legend()
+    ax[2].grid(True)
+
+    # Adjust layout to fit the category legend
+    plt.tight_layout(rect=(0, 0, 0.85, 1))
+    plt.show()
 
 
 def render():
@@ -54,6 +120,7 @@ def render():
     pygame.draw.rect(screen, "green", dice.play_area_bounds)
 
     roll_dice_button.draw(screen)
+    statistics_button.draw(screen)
 
     sheet.draw(screen)
     dice.draw(screen)
@@ -82,7 +149,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = event.pos
 
             if state.is_final():
                 if replay_button.clicked(mouse_pos):
@@ -92,45 +159,49 @@ while running:
                     final_scores = None
 
                     ai.reset()
-                    ai2.reset()
+                    # ai2.reset()
 
                 continue
 
-            # if state.current_player != 0:
-            #     continue
-            #
-            # if roll_dice_button.clicked(mouse_pos) and not dice.in_animation():
-            #     try:
-            #         state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
-            #         dice.throw(state.dice)
-            #         sheet.update_score(state, after_roll=True)
-            #     except ValueError as _:
-            #         pass
-            #
-            # dice.click(mouse_pos)
-            #
-            # sheet_cell = sheet.clicked(mouse_pos)
-            # if sheet_cell:
-            #     category, player = sheet_cell
-            #
-            #     try:
-            #         state = state.apply_category(category, player)
-            #         dice.reset()
-            #         sheet.update_score(state)
-            #     except ValueError as _:
-            #         pass
+            if statistics_button.clicked(mouse_pos):
+                show_statistics()
 
-    # if not state.is_final() and state.current_player == 0 and not dice.in_animation():
-    #     state = ai.play(dt, state)
-    #
+            if state.current_player != 0:
+                continue
+
+            if roll_dice_button.clicked(mouse_pos) and not dice.in_animation():
+                try:
+                    state = state.apply_reroll_by_unpicked_dice(dice.unpicked_indexes())
+                    dice.throw(state.dice)
+                    sheet.update_score(state, after_roll=True)
+                except ValueError as _:
+                    pass
+
+            dice.click(mouse_pos)
+
+            sheet_cell = sheet.clicked(mouse_pos)
+            if sheet_cell:
+                category, player = sheet_cell
+
+                try:
+                    state = state.apply_category(category, player)
+                    dice.reset()
+                    sheet.update_score(state)
+                except ValueError as _:
+                    pass
+
+    if not state.is_final() and state.current_player == 1 and not dice.in_animation():
+        state = ai.play(dt, state)
+
     # if not state.is_final() and state.current_player == 1 and not dice.in_animation():
     #     state = ai2.play(dt, state)
-    #
-    # if state.is_final():
-    #     final_scores = (
-    #         state.player_states[0].total_score(),
-    #         state.player_states[1].total_score(),
-    #     )
+
+    if state.is_final():
+        state.save_statistics(statistics_file)
+        final_scores = (
+            state.player_states[0].total_score(),
+            state.player_states[1].total_score(),
+        )
 
     render()
 

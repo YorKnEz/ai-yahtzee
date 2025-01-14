@@ -21,7 +21,6 @@ class Textbox:
         border_width=1,
         border_color=(0, 0, 0),
         character_limit=None,
-        line_limit=None,
     ):
         self.rect = rect
         self.font = font
@@ -42,7 +41,6 @@ class Textbox:
         self.locked = False
         self.character_limit = character_limit
         self.max_chars_per_line = (self.rect.width - 10) // self.font.size("a")[0]
-        print(self.max_chars_per_line)
         self.__wrap_text_and_set_pos()
 
     def handle_event(self, event: pygame.event.Event) -> str | None:
@@ -180,8 +178,8 @@ class Textbox:
                 self.text = self.text[:text_index - 1] + self.text[text_index:]
                 move_cursor = self.__handle_backspace
         elif len(repr(event.unicode)) > 2:
-            print(len(self.lines), (len(self.lines) - 1) * self.max_chars_per_line + len(self.lines[-1]))
-            if (len(self.lines) - 1) * self.max_chars_per_line + len(self.lines[-1]) >= self.character_limit:
+            number_of_chars = (len(self.lines) - 1) * self.max_chars_per_line + len(self.lines[-1]) - 1
+            if self.character_limit is not None and number_of_chars >= self.character_limit:
                 return
 
             self.text = self.text[:text_index] + event.unicode + self.text[text_index:]

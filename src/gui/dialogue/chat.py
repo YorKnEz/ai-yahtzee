@@ -86,7 +86,7 @@ class Chat:
             pygame.Rect(rect.left, rect.top + rect.height - input_box_height, rect.width, input_box_height),
             font,
             empty_text="Write to our AI here",
-            character_limit=307
+            character_limit=306
         )
         self.messages: list[tuple[str, Surface, MessageSender]] = []
         self.building_response = False

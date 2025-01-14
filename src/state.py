@@ -1,3 +1,7 @@
+import os
+import struct
+from typing import overload
+
 from constants import CATEGORY_COUNT, ScoreCategory
 from utils import reroll, score_roll
 
@@ -12,6 +16,8 @@ class GameState:
         self.current_player = 0
         self.dice = [1, 2, 3, 4, 5]
         self.rerolls = GameState.REROLLS_PER_ROUND
+        self.saved = False
+        self.__is_final = False
 
     def __next_turn(self):
         self.current_player = (self.current_player + 1) % len(self.player_states)
@@ -30,7 +36,7 @@ class GameState:
     def apply_reroll_by_unpicked_dice(self, unpicked_dice: list[int]) -> "GameState":
         if not self.__is_valid_reroll_by_unpicked_dice(unpicked_dice):
             raise ValueError(f"Invalid reroll {unpicked_dice}")
-
+        self.player_states[self.current_player].rerolls += 1
         new_state = self
         new_state.dice = reroll(new_state.dice, unpicked_dice)
         new_state.rerolls -= 1
@@ -79,7 +85,7 @@ class GameState:
         scores = score_roll(new_state.dice)
 
         # see how many categories of the first six are completed
-        # if there are five, if we pick the missing category we get a bonus
+        # if there are five, and if we pick the missing category, we get a bonus
         first_six_sum, first_six_cnt = 0, 0
 
         for player_score, score in zip(player_scores[:6], scores[:6]):
@@ -129,9 +135,22 @@ class GameState:
         """
         Return whether the current GameState is final.
         """
-        return not any(
+        self.__is_final = self.__is_final or not any(
             any(score == ScoreCategory.UNSELECTED.value for score in player.scores) for player in self.player_states
         )
+        return self.__is_final
+
+    def save_statistics(self, filepath: str, player_index: int = 0):
+        if self.saved:
+            return
+        if not self.is_final():
+            raise ValueError(f"State must be final to save statistics")
+        if not os.access(filepath, os.W_OK):
+            raise ValueError(f"File is not writable to")
+        self.saved = True
+        player_stats = self.player_states[player_index]
+        with open(filepath, "ab+") as file:
+            file.write(struct.pack("14i", *player_stats.scores, player_stats.rerolls - CATEGORY_COUNT))
 
     def __repr__(self):
         return f"GameState({self.dice}, {self.current_player}, {self.rerolls}, {self.player_states})"
@@ -147,6 +166,14 @@ class PlayerState:
 
     def __init__(self) -> None:
         self.scores = [ScoreCategory.UNSELECTED.value] * CATEGORY_COUNT
+        self.rerolls = 0
+
+    @classmethod
+    def from_array(cls, array: list[int]) -> "PlayerState":
+        state = cls()
+        state.scores = array[:CATEGORY_COUNT]
+        state.rerolls = array[-1]
+        return state
 
     def total_score(self):
         return sum(self.scores) + (35 if sum(self.scores[:6]) >= 63 else 0)
