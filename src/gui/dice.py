@@ -76,12 +76,15 @@ class Dice:
         )
 
     def __get_random_dice_throw(self):
-        spots = [self.__generate_spot()]
+        spots = []
+        # make sure the generated dice don't overlap with the picked dice (which are not rerolled)
+        picked_dice_pos = [die.throw_pos for die in self.dice if die.picked()]
 
         while len(spots) != len(self.dice):
             new_spot = self.__generate_spot()
             is_overlapping = False
-            for spot in spots:
+
+            for spot in spots + picked_dice_pos:
                 if distance(spot, new_spot) < Dice.die_diag:
                     is_overlapping = True
                     break

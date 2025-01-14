@@ -4,6 +4,7 @@ import pygame
 from pygame import Surface
 
 from gui.dialogue.textbox import Textbox
+from gpt import ask_ai
 
 
 def render_text_box(
@@ -107,12 +108,17 @@ class Chat:
 
     def update(self, dt):
         self.input_box.update(dt)
+
         if not self.building_response:
             return
-        # TODO
+
+        # get ai response
+        message_history = [m for m, _, _ in self.messages]
+        ai_response = ask_ai(message_history)
+
         self.messages.append((
-            "ai response",
-            render_text_box("ai response", self.input_box.font, self.rect.width * 4 // 5),
+            ai_response,
+            render_text_box(ai_response, self.input_box.font, self.rect.width * 4 // 5),
             MessageSender.AI
         ))
         self.building_response = False
