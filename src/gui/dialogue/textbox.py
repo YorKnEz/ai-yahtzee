@@ -2,8 +2,6 @@ from functools import partial
 
 import pygame
 
-from gui.dialogue import utils
-
 
 class Textbox:
 
@@ -18,10 +16,12 @@ class Textbox:
         text="",
         text_color=(255, 255, 255),
         empty_text="",
-        empty_text_color=pygame.Color("gray"),
+        empty_text_color=(128, 128, 128),
         background_color=(0, 0, 0),
         border_width=1,
-        border_color=(0, 0, 0)
+        border_color=(0, 0, 0),
+        character_limit=None,
+        line_limit=None,
     ):
         self.rect = rect
         self.font = font
@@ -31,8 +31,7 @@ class Textbox:
         self.is_line_word_continuation = []
         self.line_pos_to_text_pos = []
         self.text_color = text_color
-        self.empty_text_lines = self.__wrap_text(empty_text)[0]
-        self.empty_text_color = empty_text_color
+        self.empty_text_surfaces = self.__render_lines(self.__wrap_text(empty_text)[0], empty_text_color)
         self.background_color = background_color
         self.border_width = border_width
         self.border_color = border_color
@@ -41,6 +40,9 @@ class Textbox:
         self.cursor_update_counter = 0
         self.is_cursor_visible = False
         self.locked = False
+        self.character_limit = character_limit
+        self.max_chars_per_line = (self.rect.width - 10) // self.font.size("a")[0]
+        print(self.max_chars_per_line)
         self.__wrap_text_and_set_pos()
 
     def handle_event(self, event: pygame.event.Event) -> str | None:
@@ -116,7 +118,47 @@ class Textbox:
             self.cursor_index = (self.cursor_index[0] - 1, len(self.lines[self.cursor_index[0] - 1]) - 1)
 
     def __wrap_text(self, text) -> tuple[list[str], list[bool]]:
-        return utils.wrap_text(text, self.font, self.rect.width - 10)
+        max_text_width = self.rect.width - 10 + self.font.size(" ")[0]
+        separated_text = []
+        word_index = 0
+        for word in text.split(" "):
+            if self.font.size(word + " ")[0] <= max_text_width:
+                separated_text.append((word, word_index))
+            else:
+                current_word = ""
+                for ch in word:
+                    test_word = current_word + ch
+                    if self.font.size(test_word + " ")[0] <= max_text_width:
+                        current_word = test_word
+                    else:
+                        separated_text.append((current_word, word_index))
+                        current_word = ch
+                if current_word != "":
+                    separated_text.append((current_word, word_index))
+            word_index += 1
+
+        lines = []
+        is_line_word_continuation = []
+        current_line = ""
+        for i, (word, word_index) in enumerate(separated_text):
+            test_line = f"{current_line}{word} "
+            if self.font.size(test_line)[0] <= max_text_width:
+                current_line = test_line
+            else:
+                lines.append(current_line)
+                if len(lines) >= 1 and separated_text[i - 1][1] == word_index:
+                    is_line_word_continuation.append(True)
+                else:
+                    is_line_word_continuation.append(False)
+                current_line = f"{word} "
+        if current_line != "":
+            lines.append(current_line)
+            if len(lines) >= 1 and separated_text[-1][1] == word_index:
+                is_line_word_continuation.append(True)
+            else:
+                is_line_word_continuation.append(False)
+
+        return lines, is_line_word_continuation
 
     def __set_line_pos_to_text_pos(self):
         self.line_pos_to_text_pos.clear()
@@ -138,6 +180,10 @@ class Textbox:
                 self.text = self.text[:text_index - 1] + self.text[text_index:]
                 move_cursor = self.__handle_backspace
         elif len(repr(event.unicode)) > 2:
+            print(len(self.lines), (len(self.lines) - 1) * self.max_chars_per_line + len(self.lines[-1]))
+            if (len(self.lines) - 1) * self.max_chars_per_line + len(self.lines[-1]) >= self.character_limit:
+                return
+
             self.text = self.text[:text_index] + event.unicode + self.text[text_index:]
             move_cursor = partial(self.__move_cursor_right, prev_text_pos=text_index + 1)
 
@@ -145,8 +191,8 @@ class Textbox:
         if move_cursor:
             move_cursor()
 
-    def __render_lines(self, lines):
-        return [self.font.render(line, True, self.text_color) for line in lines]
+    def __render_lines(self, lines, color=None):
+        return [self.font.render(line, True, self.text_color if color is None else color) for line in lines]
 
     def activate(self):
         self.active = True
@@ -166,7 +212,10 @@ class Textbox:
 
         y_offset = self.rect.y + 5
 
-        for i, (line, text_surface) in enumerate(zip(self.lines, self.text_surfaces)):
+        lines_and_surfaces = zip(self.lines, self.text_surfaces) if len(self.text) > 0 or self.active \
+            else zip(self.empty_text_surfaces, self.empty_text_surfaces)
+
+        for i, (line, text_surface) in enumerate(lines_and_surfaces):
             screen.blit(text_surface, (self.rect.x + 5, y_offset))
 
             if self.active and self.is_cursor_visible and i == self.cursor_index[0]:
