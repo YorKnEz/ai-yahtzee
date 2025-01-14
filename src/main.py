@@ -3,8 +3,7 @@ import pygame
 from ai import QAI
 from constants import FPS
 from gui import AIPlayer, Button, Dice, Sheet
-from gui.dialogue.chat import Chat
-from gui.dialogue.textbox import Textbox
+from gui.dialogue import Chat
 from state import GameState
 
 pygame.init()
@@ -12,7 +11,7 @@ pygame.display.set_caption("Yahtzee")
 pygame.key.set_repeat(500, 40)
 
 size = width, height = 1280, 720
-screen = pygame.display.set_mode(size)
+screen = pygame.display.set_mode((1600, 720))
 
 screen_bounds = pygame.Rect(0, 0, width, height)
 # screen has two parts: game and scoresheet
@@ -43,7 +42,7 @@ final_scores: tuple[int, int] | None = None
 ai: AIPlayer = AIPlayer(QAI("7"), sheet, dice)
 ai2: AIPlayer = AIPlayer(QAI("bomberman"), sheet, dice)
 
-textbox = Chat(pygame.Rect(100, 100, 200, 400), 200, dialogues_font)
+textbox = Chat(pygame.Rect(1280, 0, 320, 720), 200, dialogues_font)
 
 
 def render():
