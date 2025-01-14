@@ -208,6 +208,8 @@ while running:
                 except ValueError as _:
                     pass
 
+    textbox.update_messages(state)
+
     if not state.is_final() and state.current_player == 1 and not dice.in_animation():
         state = ai.play(dt, state)
 

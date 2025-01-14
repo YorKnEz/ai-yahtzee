@@ -4,7 +4,8 @@ import pygame
 from pygame import Surface
 
 from gui.dialogue.textbox import Textbox
-from gpt import ask_ai
+from gui.dialogue.gpt import ChatResponse
+from state import GameState
 
 
 def render_text_box(
@@ -91,6 +92,7 @@ class Chat:
         )
         self.messages: list[tuple[str, Surface, MessageSender]] = []
         self.building_response = False
+        self.ai_response = None
 
     def handle_event(self, event: pygame.event.Event):
         if self.building_response:
@@ -109,18 +111,20 @@ class Chat:
     def update(self, dt):
         self.input_box.update(dt)
 
+    def update_messages(self, game_state: GameState):
         if not self.building_response:
             return
-
-        # get ai response
-        message_history = [m for m, _, _ in self.messages]
-        ai_response = ask_ai(message_history)
-
+        if self.ai_response is None:
+            self.ai_response = ChatResponse([m for m, _, _ in self.messages], game_state)
+        if not self.ai_response.is_response_ready:
+            return
+        response = self.ai_response.response
         self.messages.append((
-            ai_response,
-            render_text_box(ai_response, self.input_box.font, self.rect.width * 4 // 5),
+            response,
+            render_text_box(response, self.input_box.font, self.rect.width * 4 // 5),
             MessageSender.AI
         ))
+        self.ai_response = None
         self.building_response = False
 
     def draw(self, screen: pygame.Surface):
