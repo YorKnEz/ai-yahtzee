@@ -1,9 +1,12 @@
 import os
 import struct
+from tempfile import NamedTemporaryFile
+from tkinter import messagebox
 
 import matplotlib.colors
 import pygame
 from matplotlib import pyplot as plt
+import tkinter as tk
 
 from ai import QAI
 from constants import FPS, ScoreCategory
@@ -108,7 +111,22 @@ def show_statistics():
 
     # Adjust layout to fit the category legend
     plt.tight_layout(rect=(0, 0, 0.85, 1))
-    plt.show()
+
+    try:
+        with open("statistics.png", "wt+") as file:
+            plt.savefig(file.name)
+            plt.close()
+            os.startfile(file.name)
+    except (Exception,) as e:
+        try:
+            with NamedTemporaryFile(delete=True, suffix='.png') as temp_file:
+                plt.savefig(temp_file.name)
+                plt.close()
+                os.startfile(temp_file.name)
+        except (Exception,):
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("Error", str(e))
 
 
 def render():
