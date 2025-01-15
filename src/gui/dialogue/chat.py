@@ -4,7 +4,7 @@ import pygame
 from pygame import Surface
 
 from gui.dialogue.textbox import Textbox
-from gui.dialogue.gpt import ChatResponse
+from gui.dialogue.gpt import GptResponse
 from state import GameState
 
 
@@ -76,8 +76,8 @@ def render_text_box(
 
 
 class MessageSender(Enum):
-    Player = 0,
-    AI = 1
+    Player = "user"
+    AI = "assistant"
 
 
 class Chat:
@@ -90,48 +90,62 @@ class Chat:
             empty_text="Write to our AI here",
             character_limit=306
         )
-        self.messages: list[tuple[str, Surface, MessageSender]] = []
+        self.messages: list[tuple[Surface, MessageSender]] = []
+        self.message_history: list[dict[str, str]] = []
         self.building_response = False
         self.ai_response = None
+        self.feedback_response = None
 
-    def handle_event(self, event: pygame.event.Event):
+    def handle_event(self, event: pygame.event.Event, game_state: GameState):
         if self.building_response:
             return
 
         text = self.input_box.handle_event(event)
-        if text is None:
+        if text is None or not text.strip():
             return
         self.messages.append((
-            text,
             render_text_box(text, self.input_box.font, self.rect.width * 4 // 5, right_align=True),
             MessageSender.Player
         ))
+        self.message_history.append({"role": MessageSender.Player.value, "content": text})
         self.building_response = True
+        self.ai_response = GptResponse.chat(self.message_history, game_state)
 
     def update(self, dt):
         self.input_box.update(dt)
 
-    def update_messages(self, game_state: GameState):
         if not self.building_response:
             return
-        if self.ai_response is None:
-            self.ai_response = ChatResponse([m for m, _, _ in self.messages], game_state)
-        if not self.ai_response.is_response_ready:
+        if self.ai_response is not None:
+            if self.__check_response(self.ai_response):
+                self.ai_response = None
             return
-        response = self.ai_response.response
+        if self.feedback_response is not None:
+            if self.__check_response(self.feedback_response):
+                self.feedback_response = None
+            return
+        self.building_response = False
+
+    def __check_response(self, response):
+        if not response.is_response_ready:
+            return False
+        text = response.response
         self.messages.append((
-            response,
-            render_text_box(response, self.input_box.font, self.rect.width * 4 // 5),
+            render_text_box(text, self.input_box.font, self.rect.width * 4 // 5),
             MessageSender.AI
         ))
-        self.ai_response = None
-        self.building_response = False
+        self.message_history.append({"role": MessageSender.AI.value, "content": text})
+        return True
+
+    def generate_feedback(self, game_state: GameState):
+        self.feedback_response = GptResponse.feedback(self.message_history, game_state)
+        self.building_response = True
 
     def draw(self, screen: pygame.Surface):
         pygame.draw.rect(screen, (20, 20, 20), self.rect)
         self.input_box.draw(screen)
         height = self.input_box.rect.top
-        for _, message, sender in reversed(self.messages):
+        for message, sender in reversed(self.messages):
             height -= message.get_height() + 7
             left_shift = int(sender == MessageSender.Player) * (self.rect.width - message.get_width())
             screen.blit(message, (self.rect.left + left_shift, height))

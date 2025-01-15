@@ -56,6 +56,7 @@ ai: AIPlayer = AIPlayer(QAI("7"), sheet, dice)
 ai2: AIPlayer = AIPlayer(QAI("bomberman"), sheet, dice)
 
 textbox = Chat(pygame.Rect(1280, 0, 320, 720), 200, dialogues_font)
+generated_feedback = False
 
 
 def show_statistics():
@@ -163,7 +164,7 @@ def render():
 
 while running:
     for event in pygame.event.get():
-        textbox.handle_event(event)
+        textbox.handle_event(event, state)
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -175,6 +176,7 @@ while running:
                     dice.reset()
                     sheet.update_score(state)
                     final_scores = None
+                    generated_feedback = False
 
                     ai.reset()
                     # ai2.reset()
@@ -208,8 +210,6 @@ while running:
                 except ValueError as _:
                     pass
 
-    textbox.update_messages(state)
-
     if not state.is_final() and state.current_player == 1 and not dice.in_animation():
         state = ai.play(dt, state)
 
@@ -217,6 +217,9 @@ while running:
     #     state = ai2.play(dt, state)
 
     if state.is_final():
+        if not generated_feedback:
+            textbox.generate_feedback(state)
+            generated_feedback = True
         state.save_statistics(statistics_file)
         final_scores = (
             state.player_states[0].total_score(),

@@ -2,16 +2,22 @@ import threading
 
 from openai import OpenAI
 
-from constants import ScoreCategory
+from constants import ScoreCategory, CATEGORY_COUNT
 from state import GameState
 
 client = OpenAI()
 
 
-class ChatResponse:
-    def __init__(self, message_history: list[str], state: GameState):
+class GptResponse:
+    def __init__(self, message_history: list[dict[str, str]]):
         self._is_response_ready = False
         self._response = None
+        self.header = ""
+        self.message_history = message_history
+
+    @classmethod
+    def chat(cls, message_history: list[dict[str, str]], state: GameState):
+        obj = cls(message_history)
         remaining_categories = []
         for value, category in zip(state.player_states[0].scores, list(ScoreCategory)[1:]):
             if value == ScoreCategory.UNSELECTED.value:
@@ -21,29 +27,38 @@ class ChatResponse:
             dice_values = f"The dice have not yet been rolled this round."
         else:
             dice_values = f"""
-The values of the dice are, in no particular order: {', '.join(map(str, state.dice))}.,
-The number of rerolls left is: {state.rerolls},
-"""
+        The values of the dice are, in no particular order: {', '.join(map(str, state.dice))}.,
+        The number of rerolls left is: {state.rerolls},
+        """
 
-        self.header = f"""
-You are a chatbot for the game Yahtzee. A user will talk to you about the game. 
-{dice_values}
-The unfilled categories are: {', '.join(remaining_categories)},
+        obj.header = f"""
+        You are a chatbot for the game Yahtzee. A user will talk to you about the game. 
+        {dice_values}
+        The unfilled categories are: {', '.join(remaining_categories)},
 
-If the user's message is not related in any way to the game Yahtzee, you will answer promptly with 
-`I cannot answer to that.` and stop the answer there.
-Otherwise, you will answer with a short message (about 30 words), keeping the information concise and game-related.
-"""
-        self.message_history_with_roles = list(
-            map(
-                lambda indexed_msg: {
-                    "role": "assistant" if (indexed_msg[0] % 2 == len(message_history) % 2) else "user",
-                    "content": indexed_msg[1]
-                },
-                enumerate(message_history)
-            )
-        )
-        self._start_request()
+        If the user's message is not related in any way to the game Yahtzee, you will answer promptly with 
+        `I cannot answer to that.` and stop the answer there.
+        Otherwise, you will answer with a short message (about 30 words), 
+        keeping the information concise and game-related.
+        """
+        obj._start_request()
+        return obj
+
+    @classmethod
+    def feedback(cls, message_history: list[dict[str, str]], state: GameState):
+        obj = cls(message_history)
+        scores = [
+            f"{category.name.capitalize().replace("_", " ")} -> {value} points"
+            for value, category in zip(state.player_states[0].scores, list(ScoreCategory)[1:])
+        ]
+        obj.header = f"""
+        You are a chatbot for the game Yahtzee. A user has just finished a game.
+        The scores obtained for each category are: {', '.join(scores)}.
+        The number of used rerolls is {state.player_states[0].rerolls - CATEGORY_COUNT} out of {CATEGORY_COUNT * 2}.
+        Answer with a short message (about 30 words), providing feedback on the user's performance during this game.  
+        """
+        obj._start_request()
+        return obj
 
     def _start_request(self):
         threading.Thread(target=self._request_ai).start()
@@ -54,7 +69,7 @@ Otherwise, you will answer with a short message (about 30 words), keeping the in
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": self.header},
-                    *self.message_history_with_roles
+                    *self.message_history
                 ],
                 max_tokens=150
             )
