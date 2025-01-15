@@ -1,5 +1,7 @@
 import os
 import struct
+import tkinter as tk
+from tkinter import messagebox
 from typing import overload
 
 from constants import CATEGORY_COUNT, ScoreCategory
@@ -7,7 +9,6 @@ from utils import reroll, score_roll
 
 
 class GameState:
-
     # The first reroll is forced
     REROLLS_PER_ROUND = 3
 
@@ -141,16 +142,19 @@ class GameState:
         return self.__is_final
 
     def save_statistics(self, filepath: str, player_index: int = 0):
-        if self.saved:
-            return
-        if not self.is_final():
-            raise ValueError(f"State must be final to save statistics")
-        if not os.access(filepath, os.W_OK):
-            raise ValueError(f"File is not writable to")
-        self.saved = True
-        player_stats = self.player_states[player_index]
-        with open(filepath, "ab+") as file:
-            file.write(struct.pack("14i", *player_stats.scores, player_stats.rerolls - CATEGORY_COUNT))
+        try:
+            if self.saved:
+                return
+            if not self.is_final():
+                raise ValueError(f"State must be final to save statistics")
+            self.saved = True
+            player_stats = self.player_states[player_index]
+            with open(filepath, "ab+") as file:
+                file.write(struct.pack("14i", *player_stats.scores, player_stats.rerolls - CATEGORY_COUNT))
+        except (Exception,) as e:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("Error", str(e))
 
     def __repr__(self):
         return f"GameState({self.dice}, {self.current_player}, {self.rerolls}, {self.player_states})"

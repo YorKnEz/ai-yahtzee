@@ -27,17 +27,17 @@ class GptResponse:
             dice_values = f"The dice have not yet been rolled this round."
         else:
             dice_values = f"""
-        The values of the dice are, in no particular order: {', '.join(map(str, state.dice))}.,
+        The values of the dice are, in no particular order: {", ".join(map(str, state.dice))}.,
         The number of rerolls left is: {state.rerolls},
         """
 
         obj.header = f"""
         You are a chatbot for the game Yahtzee. A user will talk to you about the game. 
         {dice_values}
-        The unfilled categories are: {', '.join(remaining_categories)},
+        The unfilled categories are: {", ".join(remaining_categories)},
 
-        If the user's message is not related in any way to the game Yahtzee, you will answer promptly with 
-        `I cannot answer to that.` and stop the answer there.
+        If the user's message is not related in any way to the game Yahtzee, tell the user you only
+        respond to yahtzee related questions and stop the answer there.
         Otherwise, you will answer with a short message (about 30 words), 
         keeping the information concise and game-related.
         """
@@ -48,12 +48,12 @@ class GptResponse:
     def feedback(cls, message_history: list[dict[str, str]], state: GameState):
         obj = cls(message_history)
         scores = [
-            f"{category.name.capitalize().replace("_", " ")} -> {value} points"
+            f"{category.name.capitalize().replace('_', ' ')} -> {value} points"
             for value, category in zip(state.player_states[0].scores, list(ScoreCategory)[1:])
         ]
         obj.header = f"""
         You are a chatbot for the game Yahtzee. A user has just finished a game.
-        The scores obtained for each category are: {', '.join(scores)}.
+        The scores obtained for each category are: {", ".join(scores)}.
         The number of used rerolls is {state.player_states[0].rerolls - CATEGORY_COUNT} out of {CATEGORY_COUNT * 2}.
         Answer with a short message (about 30 words), providing feedback on the user's performance during this game.  
         """
@@ -67,11 +67,8 @@ class GptResponse:
         try:
             completion = client.chat.completions.create(
                 model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": self.header},
-                    *self.message_history
-                ],
-                max_tokens=150
+                messages=[{"role": "system", "content": self.header}, *self.message_history],
+                max_tokens=150,
             )
             self._response = completion.choices[0].message.content
         except Exception as e:

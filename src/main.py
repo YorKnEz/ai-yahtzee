@@ -61,14 +61,20 @@ generated_feedback = False
 
 def show_statistics():
     if not os.path.isfile(statistics_file):
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo("Info", "No statistics available!")
         return None
     if not os.access(statistics_file, os.R_OK):
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror("Error", "Cannot read statistics file!")
         return None
     struct_size = struct.calcsize("14i")
     with open(statistics_file, "rb") as file:
         fdata = file.read()
         player_states = [
-            PlayerState.from_array(list(struct.unpack("14i", fdata[i:i + struct_size])))
+            PlayerState.from_array(list(struct.unpack("14i", fdata[i : i + struct_size])))
             for i in range(0, len(fdata), struct_size)
         ]
 
@@ -81,7 +87,7 @@ def show_statistics():
     fig, ax = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
 
     # Plot total score evolution
-    ax[0].plot(games, total_scores, marker='o', label="Total Score", color="blue")
+    ax[0].plot(games, total_scores, marker="o", label="Total Score", color="blue")
     ax[0].set_title("Total Score Evolution")
     ax[0].set_ylabel("Total Score")
     ax[0].legend()
@@ -92,7 +98,7 @@ def show_statistics():
     colors = [cmap(i / len(category_scores)) for i in range(len(category_scores))]
     for category_data, category_type, color in zip(category_scores, list(ScoreCategory)[1:], colors):
         ax[1].plot(
-            games, category_data, marker='o', label=category_type.name.capitalize().replace("_", " "), color=color
+            games, category_data, marker="o", label=category_type.name.capitalize().replace("_", " "), color=color
         )
     ax[1].set_title("Category Score Evolution")
     ax[1].set_ylabel("Score per Category")
@@ -100,7 +106,7 @@ def show_statistics():
     ax[1].grid(True)
 
     # Plot reroll evolution
-    ax[2].plot(games, rerolls, marker='o', label="Rerolls Used", color="red")
+    ax[2].plot(games, rerolls, marker="o", label="Rerolls Used", color="red")
     ax[2].set_title("Reroll Evolution")
     ax[2].set_xlabel("Game Number")
     ax[2].set_ylabel("Rerolls Used")
@@ -120,7 +126,7 @@ def show_statistics():
             os.startfile(file.name)
     except (Exception,) as e:
         try:
-            with NamedTemporaryFile(delete=True, suffix='.png') as temp_file:
+            with NamedTemporaryFile(delete=True, suffix=".png") as temp_file:
                 plt.savefig(temp_file.name)
                 plt.close()
                 os.startfile(temp_file.name)
@@ -170,10 +176,14 @@ while running:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = event.pos
 
+            if statistics_button.clicked(mouse_pos):
+                show_statistics()
+
             if state.is_final():
                 if replay_button.clicked(mouse_pos):
                     state = GameState()
                     dice.reset()
+                    dice.current_pos = 0
                     sheet.update_score(state)
                     final_scores = None
                     generated_feedback = False
@@ -182,9 +192,6 @@ while running:
                     # ai2.reset()
 
                 continue
-
-            if statistics_button.clicked(mouse_pos):
-                show_statistics()
 
             if state.current_player != 0:
                 continue
