@@ -74,8 +74,8 @@ Before our presentation we added two important features:
 
 Throughout this semester, we worked together most of the time in order to achieve our goals, but, if we were to mention the special contributions each of us had for this project it would go like this:
 
-Chirvasă Matei-George: AI development, UI for chatbot, statistics
-Mitreanu Alexandru: AI development, UI for the rest of the game
+Chirvasă Matei-George: AI development, UI for chatbot, statistics<br>
+Mitreanu Alexandru: AI development, UI for the rest of the game<br>
 Prodan Sabina-Alina: NLP and chatbot
 
 ## References
